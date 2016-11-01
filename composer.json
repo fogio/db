@@ -1,0 +1,15 @@
+{
+    "name": "fogio/db",
+    "description": "Fogio Database Component",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=5.4.0",
+        "fogio/container": "*",
+        "fogio/paging": "*"
+    },
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": { "Fogio\\Db\\": "src" }
+    }
+}
