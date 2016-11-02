@@ -6,19 +6,37 @@ use Fogio\Container\Container;
 
 class Db extends Container
 {
-    public function setPdo(Closure $definition)
+    public function setPdo($pdo)
     {
-        $this(['_pdo' => $definition]);
+        if ($pdo instanceof PDO) {
+            $this->_pdo = $pdo;
+        } elseif ($pdo instanceof Callable) {
+            $this(['_pdo' => $pdo]);
+        } else {
+            throw new InvalidArgumentException('$pdo must be instanceof PDO or Callable');
+        }
     }
     
-    public function setPdoRead(Closure $definition)
+    public function setPdoRead($pdo)
     {
-        $this(['_read' => $definition]);
+        if ($pdo instanceof PDO) {
+            $this->_read = $pdo;
+        } elseif ($pdo instanceof Callable) {
+            $this(['_read' => $pdo]);
+        } else {
+            throw new InvalidArgumentException('$pdo must be instanceof PDO or Callable');
+        }
     }
     
-    public function setPdoWrite(Closure $definition)
+    public function setPdoWrite($pdo)
     {
-        $this(['_write' => $definition]);
+        if ($pdo instanceof PDO) {
+            $this->_write = $pdo;
+        } elseif ($pdo instanceof Callable) {
+            $this(['_write' => $pdo]);
+        } else {
+            throw new InvalidArgumentException('$pdo must be instanceof PDO or Callable');
+        }
     }
     
     public function escape($string)
@@ -29,6 +47,14 @@ class Db extends Container
     public function lastInsertId()
     {
         return $this->_read->lastInsertId();
+    }
+
+    /**
+     * @return PDOStatement
+     */
+    public function query($stmt)
+    {
+        return $this->read($stmt);
     }
 
     /**
@@ -45,6 +71,14 @@ class Db extends Container
     public function write($stmt)
     {
         return $this->_write->query($this->sql($stmt));
+    }
+
+    /**
+     * @return PDOStatement
+     */
+    public function prepare($stmt)
+    {
+        return $this->prepareRead($stmt);
     }
 
     /**
