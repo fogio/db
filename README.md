@@ -52,8 +52,7 @@ $fdq = [
     ':operator' => 'AND' // values: AND, OR; default: AND; logical operator that joins all conditions
     [':operator' => 'OR', 'post_level' => '1'
         [':operator' => 'OR', 'post_level' => '2', 'post_level' => '3']
-    ]
-    // post_level = '1' OR (post_level = '2' OR  post_level = '3')
+    ], // post_level = '1' OR (post_level = '2' OR  post_level = '3')
 ];
 ```
 
