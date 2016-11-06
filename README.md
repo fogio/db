@@ -1,7 +1,7 @@
 Fogio Db
 ========
 
-Pdo wrapper; individual pdo for read and write; FDQ - Fogio DB Query
+Pdo wrapper; individual pdo for read and write; FDQ - Fogio DB Query;
 models; active record;
 
 
