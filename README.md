@@ -19,7 +19,7 @@ Configuration
 FDQ - Fogio Db Query
 --------------------
 
-FDQ is an array.  
+FDQ is an array. 
 Special params starts with `:`. 
 Everything else is a WHERE clause.
 `|` at beging forces raw sql. 
