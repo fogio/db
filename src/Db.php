@@ -6,133 +6,220 @@ use Fogio\Container\Container;
 
 class Db extends Container
 {
+    
+    /* config */
+    
     public function setPdo($pdo)
     {
-        if ($pdo instanceof PDO) {
-            $this->_pdo = $pdo;
-        } elseif ($pdo instanceof Callable) {
-            $this(['_pdo' => $pdo]);
-        } else {
-            throw new InvalidArgumentException('$pdo must be instanceof PDO or Callable');
-        }
+        $this->_pdo = $pdo;
+        
+        return $this;
+    }
+    
+    public function setPdoFactory($pdo)
+    {
+        $this(['_pdo' => $pdo]);
+        
+        return $this;
     }
     
     public function setPdoRead($pdo)
     {
-        if ($pdo instanceof PDO) {
-            $this->_read = $pdo;
-        } elseif ($pdo instanceof Callable) {
-            $this(['_read' => $pdo]);
-        } else {
-            throw new InvalidArgumentException('$pdo must be instanceof PDO or Callable');
-        }
+        $this->_read = $pdo;
+        
+        return $this;
+    }
+    
+    public function setPdoReadFactory($pdo)
+    {
+        $this(['_read' => $pdo]);
+        
+        return $this;
     }
     
     public function setPdoWrite($pdo)
     {
-        if ($pdo instanceof PDO) {
-            $this->_write = $pdo;
-        } elseif ($pdo instanceof Callable) {
-            $this(['_write' => $pdo]);
-        } else {
-            throw new InvalidArgumentException('$pdo must be instanceof PDO or Callable');
-        }
+        $this->_write = $pdo;
+        
+        return $this;
     }
     
-    public function escape($string)
+    public function setPdoWriteFactory($pdo)
     {
-        return $this->_read->quote($string);
+        $this(['_write' => $pdo]);
+        
+        return $this;
     }
-
-    public function lastInsertId()
+    
+    public function setPagingFactory(Callable $factory)
     {
-        return $this->_read->lastInsertId();
+        $this(['_paging' => $factory]);
+        
+        return $this;
+    }
+    
+    public function getPdo()
+    {
+        return $this->_pdo;
+    }
+    
+    public function getPdoRead()
+    {
+        return $this->_read;
+    }
+    
+    public function getPdoWrite()
+    {
+        return $this->_write;
+    }
+    
+    /* query base */
+    
+    /**
+     * @return PDOStatement
+     */
+    public function query($fdq)
+    {
+        return $this->read($fdq);
     }
 
     /**
      * @return PDOStatement
      */
-    public function query($stmt)
+    public function read($fdq)
     {
-        return $this->read($stmt);
+        return $this->_read->query($this->sql($fdq));
     }
 
     /**
      * @return PDOStatement
      */
-    public function read($stmt)
+    public function write($fdq)
     {
-        return $this->_read->query($this->sql($stmt));
+        return $this->_write->query($this->sql($fdq));
     }
 
     /**
      * @return PDOStatement
      */
-    public function write($stmt)
+    public function prepare($fdq)
     {
-        return $this->_write->query($this->sql($stmt));
+        return $this->prepareRead($fdq);
     }
 
     /**
      * @return PDOStatement
      */
-    public function prepare($stmt)
+    public function prepareRead($fdq)
     {
-        return $this->prepareRead($stmt);
+        return $this->_read->prepare($this->sql($fdq));
     }
 
     /**
      * @return PDOStatement
      */
-    public function prepareRead($stmt)
+    public function prepareWrite($fdq)
     {
-        return $this->_read->prepare($this->sql($stmt));
+        return $this->_write->prepare($this->sql($fdq));
+    }
+    
+    public function beginTransaction()
+    {
+        return $this->beginReadTransaction();
+    }
+    
+    public function beginReadTransaction()
+    {
+        return $this->_read->beginTransaction();
+    }
+    
+    public function beginWriteTransaction()
+    {
+        return $this->_write->beginTransaction();
     }
 
-    /**
-     * @return PDOStatement
-     */
-    public function prepareWrite($stmt)
+    public function commit()
     {
-        return $this->_write->prepare($this->sql($stmt));
+        return $this->commitRead();
+    }
+    
+    public function commitRead()
+    {
+        return $this->_read->commit();
+    }
+    
+    public function commitWrite()
+    {
+        return $this->_write->commit();
     }
 
-    public function fetch($stmt)
+    public function rollBack()
     {
-        $this->read($this->sql($stmt))->fetch(PDO::FETCH_ASSOC);
+        return $this->rollBackRead();
+    }
+    
+    public function rollBackRead()
+    {
+        return $this->_read->rollBack();
+    }
+    
+    public function rollBackWrite()
+    {
+        return $this->_write->rollBack();
     }
 
-    public function fetchAll($stmt)
+    /* fetch */
+    
+    public function fetch($fdq)
     {
-        return $this->read($this->sql($stmt))->fetchAll(PDO::FETCH_ASSOC);
+        return $this->read($this->sql($fdq))->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function fetchCol($stmt)
+    public function fetchAll($fdq)
     {
-        return $this->read($this->sql($stmt))->fetchColumn();
+        $calc = isset($fdq[':paging']) && $fdq[':paging']->getCalcFound() === true;
+        
+        if ($calc) {
+            $fdq[':prefix'] = (isset($fdq[':prefix']) ? $fdq[':prefix'] . ' ' : '') . 'SQL_CALC_FOUND_ROWS';
+        }
+        
+        $data = $this->read($this->sql($fdq))->fetchAll(PDO::FETCH_ASSOC);
+        
+        if ($calc) {
+            $fdq[':paging']->setAll($this->fetchVal('SELECT FOUND_ROWS()'));
+        }
+                
+        return $data;
     }
 
-    public function fetchVal($stmt)
+    public function fetchCol($fdq)
     {
-        $val = $this->read($this->sql($stmt))->fetchColumn();
+        return $this->read($this->sql($fdq))->fetchColumn();
+    }
+
+    public function fetchVal($fdq)
+    {
+        $val = $this->read($this->sql($fdq))->fetchColumn();
 
         return is_array($val) ? $val[0] : null;
     }
 
-    public function fetchKeyPair($stmt)
+    public function fetchKeyPair($fdq)
     {
-        return $this->read($this->sql($stmt))->fetchAll(\PDO::FETCH_KEY_PAIR);
+        return $this->read($this->sql($fdq))->fetchAll(\PDO::FETCH_KEY_PAIR);
     }
 
-    public function fetchKeyed($stmt)
+    public function fetchKeyed($fdq)
     {
-        return $this->read($this->sql($stmt))->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
+        return $this->read($this->sql($fdq))->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
     }
 
+    /* FDQ- Fogio Db Query */
+    
     /**
      * Builds fragmenet or full raw sql query.
      *
-     * $stmt options:
+     * $fdq options:
      * - ':select' => ['post_id', 'title' => 'post_title']  // `post_id`, `post_title` as 'title'
      * - ':select' => 'post_id, post_title as title' // post_id, post_title as title
      * - ':select' => ['|count' => '|COUNT(*)']  // COUNT(*) as count
@@ -157,26 +244,24 @@ class Db extends Container
      *    [':operator' => 'OR', 'post_level' => '2', 'post_level' => '3']]
      *   // post_level = '1' OR (post_level = '2' OR  post_level = '3')
      *
-     * @todo :set
-     *
-     * @param array $stmt
+     * @param array $fdq
      *
      * @return string Sql
      */
-    public function sql($stmt)
+    public function sql($fdq)
     {
-        if (is_string($stmt)) {
-            return $stmt;
+        if (is_string($fdq)) {
+            return $fdq;
         }
-
+        
         // select, prefix
         $select = null;
-        if (isset($stmt[':select'])) {
-            if (!is_array($stmt[':select'])) {
-                $select = $stmt[':select'];
+        if (isset($fdq[':select'])) {
+            if (!is_array($fdq[':select'])) {
+                $select = $fdq[':select'];
             } else {
                 $cols = [];
-                foreach ($stmt[':select'] as $k => $v) {
+                foreach ($fdq[':select'] as $k => $v) {
                     $col = $v[0] === '|' ? substr($v, 1) : "`$v`";
                     if (is_int($k)) {
                         $col .= ' '.($k[0] === '|' ? substr($k, 1) : "'{$this->escape($k)}'");
@@ -186,59 +271,59 @@ class Db extends Container
                 $select = implode(', ', $cols);
             }
             $select = 'SELECT '
-                    .(array_key_exists(':prefix', $stmt) ? ' '.$stmt[':prefix'] : '')
+                    .(array_key_exists(':prefix', $fdq) ? ' '.$fdq[':prefix'] : '')
                     .$select;
         }
 
         // from, alias
         $from = null;
-        if (array_key_exists(':from', $stmt)) {
+        if (array_key_exists(':from', $fdq)) {
             $from = ' FROM ';
             if (is_array()) {
-                $table = reset($stmt[':from']);
-                $alias = key($stmt[':from']);
+                $table = reset($fdq[':from']);
+                $alias = key($fdq[':from']);
                 $from .= "`$table` as '{$this->escape($alias)}'";
-            } elseif ($stmt[':from'][0] === '*') {
-                $from .= substr($stmt[':from'], 1);
+            } elseif ($fdq[':from'][0] === '*') {
+                $from .= substr($fdq[':from'], 1);
             } else {
-                $from .= "`{$stmt[':from']}`";
+                $from .= "`{$fdq[':from']}`";
             }
         }
 
         // join
-        $join = array_key_exists(':join', $stmt) ? ' '.implode(' ', $stmt[':join']) : null;
+        $join = array_key_exists(':join', $fdq) ? ' '.implode(' ', $fdq[':join']) : null;
 
         // group
-        $group = array_key_exists(':group', $stmt) ? ' GROUP BY '.$stmt[':group'] : null;
+        $group = array_key_exists(':group', $fdq) ? ' GROUP BY '.$fdq[':group'] : null;
 
         // having
-        $having = array_key_exists(':having', $stmt) ? ' HAVING '.$this->sqlCondition($stmt[':having']) : null;
+        $having = array_key_exists(':having', $fdq) ? ' HAVING '.$this->sqlCondition($fdq[':having']) : null;
 
         // group
-        $order = array_key_exists(':order', $stmt) ? ' ORDER BY '.$stmt[':order'] : null;
+        $order = array_key_exists(':order', $fdq) ? ' ORDER BY '.$fdq[':order'] : null;
 
         // limit, offset
         $limit = null;
         $offset = null;
-        if (array_key_exists(':paging', $stmt)) {
-            $limit = ' LIMIT '.$stmt[':paging']->getLimit();
-            $offset = ' OFFSET '.$stmt[':paging']->getOffset();
+        if (array_key_exists(':paging', $fdq)) {
+            $limit = ' LIMIT '.$fdq[':paging']->getLimit();
+            $offset = ' OFFSET '.$fdq[':paging']->getOffset();
         } else {
-            if (array_key_exists(':limit', $stmt)) {
-                $limit = ' LIMIT '.$stmt[':limit'];
+            if (array_key_exists(':limit', $fdq)) {
+                $limit = ' LIMIT '.$fdq[':limit'];
             }
-            if (array_key_exists(':offset', $stmt)) {
-                $offset = ' OFFSET '.$stmt[':offset'];
+            if (array_key_exists(':offset', $fdq)) {
+                $offset = ' OFFSET '.$fdq[':offset'];
             }
         }
 
-        unset($stmt[':select'], $stmt[':prefix'],
-              $stmt[':from'], $stmt[':join'],
-              $stmt[':group'], $stmt[':having'], $stmt[':order'],
-              $stmt[':paging'], $stmt[':limit'], $stmt[':offset']);
+        unset($fdq[':select'], $fdq[':prefix'],
+              $fdq[':from'], $fdq[':join'],
+              $fdq[':group'], $fdq[':having'], $fdq[':order'],
+              $fdq[':paging'], $fdq[':limit'], $fdq[':offset']);
 
         // everything else is where
-        $where = $this->sqlCondition($stmt);
+        $where = $this->sqlCondition($fdq);
         if ($where) {
             $where = ' WHERE '.$where;
         } else {
@@ -319,11 +404,8 @@ class Db extends Container
         return implode($logical, $sql);
     }
 
-    public function count($table, array $statement, $expr = '*')
-    {
-        return $this->read($this->sql([':select' => "|count($expr)", ':from' => $table] + $statement));
-    }
-
+    /* write */
+    
     /**
      * @param string $table
      * @param array  $row
@@ -361,7 +443,7 @@ class Db extends Container
         return $this->write("INSERT INTO `{$table}` (`".implode('`, `', $fields).'`) VALUES '.implode(', ', $values));
     }
 
-    public function update($table, array $data, array $stmt)
+    public function update($table, array $data, array $fdq)
     {
         $set = array();
 
@@ -373,13 +455,37 @@ class Db extends Container
             }
         }
 
-        return $this->write("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($stmt));
+        return $this->write("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($fdq));
     }
 
-    public function delete($table, array $stmt)
+    public function delete($table, array $fdq)
     {
-        return $this->write($this->sql([':prefix' => 'DELETE', ':from' => $table] + $stmt));
+        return $this->write($this->sql([':prefix' => 'DELETE', ':from' => $table] + $fdq));
     }
+    
+    /* helpers */
+    
+    public function escape($string)
+    {
+        return $this->_read->quote($string);
+    }
+
+    public function lastInsertId()
+    {
+        return $this->_read->lastInsertId();
+    }
+
+    public function count($table, array $statement, $expr = '*')
+    {
+        return $this->read($this->sql([':select' => "|count($expr)", ':from' => $table] + $statement));
+    }
+    
+    public function getPaging()
+    {
+        return $this->_paging;
+    }
+
+    /* private api */
 
     protected function __read()
     {
@@ -394,5 +500,10 @@ class Db extends Container
     protected function __pdo()
     {
         throw new LogicException('Service `_pdo` not defined');
+    }
+    
+    protected function __paging()
+    {
+        return new Paging();
     }
 }
