@@ -8,7 +8,6 @@ class Model
 {
     protected $_db;
     protected $_table;
-    protected $_alias;
     protected $_key;
     protected $_field;
     protected $_prefix;
@@ -357,18 +356,6 @@ class Model
         return $this->_param[':prefix'];
     }
 
-    public function setAlias($alias)
-    {
-        $this->_param[':alias'] = $alias;
-
-        return $this;
-    }
-
-    public function getAlias()
-    {
-        return $this->_param[':alias'];
-    }
-
     public function setGroup($group)
     {
         $this->_param[':group'] = $group;
@@ -507,7 +494,7 @@ class Model
 
     public function selectCount($params = null, $expr = '*')
     {
-        return $this->setResult($this->_db->fetchKeyed("SELECT COUNT($expr)".$this->_sql($params, false, true)));
+        return $this->setResult($this->_db->fetchVal("SELECT COUNT($expr)".$this->_sql($params, false, true)));
     }
 
     public function selectEach(callable $callback)
@@ -632,9 +619,6 @@ class Model
 
         if ($from) {
             $sql[':from'] = $this->_table;
-            if ($this->_alias !== null) {
-                $sql[':from'] = [$this->_alias => $this->_table];
-            }
         }
 
         $sql = array_merge($this->_param, (array) $param, $sql);

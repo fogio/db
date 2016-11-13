@@ -23,47 +23,9 @@ class Db extends Container
         return $this;
     }
     
-    public function setPdoRead($pdo)
-    {
-        $this->_read = $pdo;
-        
-        return $this;
-    }
-    
-    public function setPdoReadFactory($pdo)
-    {
-        $this(['_read' => $pdo]);
-        
-        return $this;
-    }
-    
-    public function setPdoWrite($pdo)
-    {
-        $this->_write = $pdo;
-        
-        return $this;
-    }
-    
-    public function setPdoWriteFactory($pdo)
-    {
-        $this(['_write' => $pdo]);
-        
-        return $this;
-    }
-    
     public function getPdo()
     {
         return $this->_pdo;
-    }
-    
-    public function getPdoRead()
-    {
-        return $this->_read;
-    }
-    
-    public function getPdoWrite()
-    {
-        return $this->_write;
     }
     
     public function setPagingFactory(Callable $factory)
@@ -79,29 +41,13 @@ class Db extends Container
     }
     
     /* query base */
-    
+
     /**
      * @return PDOStatement
      */
     public function query($fdq)
     {
-        return $this->read($fdq);
-    }
-
-    /**
-     * @return PDOStatement
-     */
-    public function read($fdq)
-    {
-        return $this->_read->query($this->sql($fdq));
-    }
-
-    /**
-     * @return PDOStatement
-     */
-    public function write($fdq)
-    {
-        return $this->_write->query($this->sql($fdq));
+        return $this->_pdo->query($this->sql($fdq));
     }
 
     /**
@@ -109,68 +55,22 @@ class Db extends Container
      */
     public function prepare($fdq)
     {
-        return $this->prepareRead($fdq);
-    }
-
-    /**
-     * @return PDOStatement
-     */
-    public function prepareRead($fdq)
-    {
-        return $this->_read->prepare($this->sql($fdq));
-    }
-
-    /**
-     * @return PDOStatement
-     */
-    public function prepareWrite($fdq)
-    {
-        return $this->_write->prepare($this->sql($fdq));
+        return $this->_pdo->prepare($this->sql($fdq));
     }
     
     public function beginTransaction()
     {
-        return $this->beginReadTransaction();
-    }
-    
-    public function beginReadTransaction()
-    {
-        return $this->_read->beginTransaction();
-    }
-    
-    public function beginWriteTransaction()
-    {
-        return $this->_write->beginTransaction();
+        return $this->_pdo->beginTransaction();
     }
 
     public function commit()
     {
-        return $this->commitRead();
-    }
-    
-    public function commitRead()
-    {
-        return $this->_read->commit();
-    }
-    
-    public function commitWrite()
-    {
-        return $this->_write->commit();
+        return $this->_pdo->commit();
     }
 
     public function rollBack()
     {
-        return $this->rollBackRead();
-    }
-    
-    public function rollBackRead()
-    {
-        return $this->_read->rollBack();
-    }
-    
-    public function rollBackWrite()
-    {
-        return $this->_write->rollBack();
+        return $this->_pdo->rollBack();
     }
 
     /* fetch */
@@ -182,7 +82,7 @@ class Db extends Container
     
     public function fetch($fdq)
     {
-        return $this->read($fdq)->fetch(PDO::FETCH_ASSOC);
+        return $this->query($fdq)->fetch(PDO::FETCH_ASSOC);
     }
 
     public function fetchAll($fdq)
@@ -193,7 +93,7 @@ class Db extends Container
             $fdq[':prefix'] = (isset($fdq[':prefix']) ? $fdq[':prefix'] . ' ' : '') . 'SQL_CALC_FOUND_ROWS';
         }
         
-        $data = $this->read($fdq)->fetchAll(PDO::FETCH_ASSOC);
+        $data = $this->query($fdq)->fetchAll(PDO::FETCH_ASSOC);
         
         if ($calc) {
             $fdq[':paging']->setAll($this->fetchVal('SELECT FOUND_ROWS()'));
@@ -205,7 +105,7 @@ class Db extends Container
     public function fetchCol($fdq, $colName = 0)
     {
         $col = [];
-        foreach ($this->read($fdq)->fetchall() as $row) {
+        foreach ($this->query($fdq)->fetchall() as $row) {
             $col[] = $row[$colName];
         }
         return $col;
@@ -213,19 +113,19 @@ class Db extends Container
 
     public function fetchVal($fdq, $colName = 0)
     {
-        $row = $this->read($fdq)->fetch();
+        $row = $this->query($fdq)->fetch();
 
         return array_key_exists($colName, $row) ? $row[$colName] : null;
     }
 
     public function fetchKeyPair($fdq)
     {
-        return $this->read($fdq)->fetchAll(\PDO::FETCH_KEY_PAIR);
+        return $this->query($fdq)->fetchAll(\PDO::FETCH_KEY_PAIR);
     }
 
     public function fetchKeyed($fdq)
     {
-        return $this->read($fdq)->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
+        return $this->query($fdq)->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
     }
 
     /* write */
@@ -248,7 +148,7 @@ class Db extends Container
             }
         }
 
-        return $this->write("INSERT INTO `{$table}` SET ".implode(', ', $set));
+        return $this->query("INSERT INTO `{$table}` SET ".implode(', ', $set));
     }
 
     public function insertAll($table, array $rows)
@@ -264,7 +164,7 @@ class Db extends Container
             $values[] = '('.implode(', ', $value).')';
         }
 
-        return $this->write("INSERT INTO `{$table}` (`".implode('`, `', $fields).'`) VALUES '.implode(', ', $values));
+        return $this->query("INSERT INTO `{$table}` (`".implode('`, `', $fields).'`) VALUES '.implode(', ', $values));
     }
 
     public function update($table, array $data, array $fdq)
@@ -279,24 +179,24 @@ class Db extends Container
             }
         }
 
-        return $this->write("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($fdq));
+        return $this->query("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($fdq));
     }
 
     public function delete($table, array $fdq)
     {
-        return $this->write([':prefix' => 'DELETE', ':from' => $table] + $fdq);
+        return $this->query([':prefix' => 'DELETE', ':from' => $table] + $fdq);
     }
     
     /* helpers */
     
     public function escape($string)
     {
-        return $this->_read->quote($string);
+        return $this->_pdo->quote($string);
     }
 
     public function lastInsertId()
     {
-        return $this->_read->lastInsertId();
+        return $this->_pdo->lastInsertId();
     }
 
     /* FDQ- Fogio Db Query */
@@ -496,16 +396,6 @@ class Db extends Container
         throw new LogicException('Service `_pdo` not defined');
     }
     
-    protected function __read()
-    {
-        return $this->_pdo;
-    }
-
-    protected function __write()
-    {
-        return $this->_pdo;
-    }
-
     protected function __paging()
     {
         return new Paging();
