@@ -29,28 +29,27 @@ class Post extends TableAbstract
     public function  getLinks() 
     {
         return [
-            new Link()
+            (new Link())
                 ->setName('user')
-
                 ->setField('post_id_user')
                 ->setForeign('user', 'user_id'),
-            new Link()
+            (new Link())
                 ->setName('comment:last')
                 ->setField('post_id_comment_last')
-                ->setForeign('comment', 'comment_id')
-            new Link()
+                ->setForeign('comment', 'comment_id'),
+            (new Link())
                 ->setName('comment:last')
                 ->setForeign('comment', 'comment_id')
                 ->setWhere()
                 ->setAlias()
-                ->setJoin(Link::JOIN_INNER)
+                ->setJoin(Link::JOIN_INNER),
                 
         ];
     }
     
     public function onFdq($fdq)
     {
-        return $fdq
+        return $fdq;
     }
     
     public function onResult($row)
