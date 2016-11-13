@@ -51,13 +51,6 @@ class Db extends Container
         return $this;
     }
     
-    public function setPagingFactory(Callable $factory)
-    {
-        $this(['_paging' => $factory]);
-        
-        return $this;
-    }
-    
     public function getPdo()
     {
         return $this->_pdo;
@@ -71,6 +64,18 @@ class Db extends Container
     public function getPdoWrite()
     {
         return $this->_write;
+    }
+    
+    public function setPagingFactory(Callable $factory)
+    {
+        $this(['_paging' => $factory]);
+        
+        return $this;
+    }
+    
+    public function getPaging()
+    {
+        return $this->_paging;
     }
     
     /* query base */
@@ -170,9 +175,14 @@ class Db extends Container
 
     /* fetch */
     
+    public function count($fdq, $expr = '*')
+    {
+        return $this->fetchVal([':select' => "|count($expr)"] + $fdq);
+    }
+    
     public function fetch($fdq)
     {
-        return $this->read($this->sql($fdq))->fetch(PDO::FETCH_ASSOC);
+        return $this->read($fdq)->fetch(PDO::FETCH_ASSOC);
     }
 
     public function fetchAll($fdq)
@@ -183,7 +193,7 @@ class Db extends Container
             $fdq[':prefix'] = (isset($fdq[':prefix']) ? $fdq[':prefix'] . ' ' : '') . 'SQL_CALC_FOUND_ROWS';
         }
         
-        $data = $this->read($this->sql($fdq))->fetchAll(PDO::FETCH_ASSOC);
+        $data = $this->read($fdq)->fetchAll(PDO::FETCH_ASSOC);
         
         if ($calc) {
             $fdq[':paging']->setAll($this->fetchVal('SELECT FOUND_ROWS()'));
@@ -192,26 +202,101 @@ class Db extends Container
         return $data;
     }
 
-    public function fetchCol($fdq)
+    public function fetchCol($fdq, $colName = 0)
     {
-        return $this->read($this->sql($fdq))->fetchColumn();
+        $col = [];
+        foreach ($this->read($fdq)->fetchall() as $row) {
+            $col[] = $row[$colName];
+        }
+        return $col;
     }
 
-    public function fetchVal($fdq)
+    public function fetchVal($fdq, $colName = 0)
     {
-        $val = $this->read($this->sql($fdq))->fetchColumn();
+        $row = $this->read($fdq)->fetch();
 
-        return is_array($val) ? $val[0] : null;
+        return array_key_exists($colName, $row) ? $row[$colName] : null;
     }
 
     public function fetchKeyPair($fdq)
     {
-        return $this->read($this->sql($fdq))->fetchAll(\PDO::FETCH_KEY_PAIR);
+        return $this->read($fdq)->fetchAll(\PDO::FETCH_KEY_PAIR);
     }
 
     public function fetchKeyed($fdq)
     {
-        return $this->read($this->sql($fdq))->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
+        return $this->read($fdq)->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
+    }
+
+    /* write */
+    
+    /**
+     * @param string $table
+     * @param array  $row
+     *
+     * @return self
+     */
+    public function insert($table, array $row)
+    {
+        $set = [];
+
+        foreach ($row as $k => $v) {
+            if (is_int($k)) {
+                $set[] = $v;
+            } else {
+                $set[$k] = "`$k` = '{$this->escape($v)}'";
+            }
+        }
+
+        return $this->write("INSERT INTO `{$table}` SET ".implode(', ', $set));
+    }
+
+    public function insertAll($table, array $rows)
+    {
+        $fields = array_keys($rows[0]);
+        $values = [];
+
+        foreach ($rows as $row) {
+            $value = [];
+            foreach ($fields as $field) {
+                $value[$field] = "'{$this->escape($row[$field])}'";
+            }
+            $values[] = '('.implode(', ', $value).')';
+        }
+
+        return $this->write("INSERT INTO `{$table}` (`".implode('`, `', $fields).'`) VALUES '.implode(', ', $values));
+    }
+
+    public function update($table, array $data, array $fdq)
+    {
+        $set = array();
+
+        foreach ($data as $k => $v) {
+            if (is_int($k)) {
+                $set[] = $v;
+            } else {
+                $set[$k] = "`$k` = '{$this->escape($v)}'";
+            }
+        }
+
+        return $this->write("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($fdq));
+    }
+
+    public function delete($table, array $fdq)
+    {
+        return $this->write([':prefix' => 'DELETE', ':from' => $table] + $fdq);
+    }
+    
+    /* helpers */
+    
+    public function escape($string)
+    {
+        return $this->_read->quote($string);
+    }
+
+    public function lastInsertId()
+    {
+        return $this->_read->lastInsertId();
     }
 
     /* FDQ- Fogio Db Query */
@@ -404,89 +489,13 @@ class Db extends Container
         return implode($logical, $sql);
     }
 
-    /* write */
-    
-    /**
-     * @param string $table
-     * @param array  $row
-     *
-     * @return self
-     */
-    public function insert($table, array $row)
-    {
-        $set = [];
-
-        foreach ($row as $k => $v) {
-            if (is_int($k)) {
-                $set[] = $v;
-            } else {
-                $set[$k] = "`$k` = '{$this->escape($v)}'";
-            }
-        }
-
-        return $this->write("INSERT INTO `{$table}` SET ".implode(', ', $set));
-    }
-
-    public function insertAll($table, array $rows)
-    {
-        $fields = array_keys($rows[0]);
-        $values = [];
-
-        foreach ($rows as $row) {
-            $value = [];
-            foreach ($fields as $field) {
-                $value[$field] = "'{$this->escape($row[$field])}'";
-            }
-            $values[] = '('.implode(', ', $value).')';
-        }
-
-        return $this->write("INSERT INTO `{$table}` (`".implode('`, `', $fields).'`) VALUES '.implode(', ', $values));
-    }
-
-    public function update($table, array $data, array $fdq)
-    {
-        $set = array();
-
-        foreach ($data as $k => $v) {
-            if (is_int($k)) {
-                $set[] = $v;
-            } else {
-                $set[$k] = "`$k` = '{$this->escape($v)}'";
-            }
-        }
-
-        return $this->write("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($fdq));
-    }
-
-    public function delete($table, array $fdq)
-    {
-        return $this->write($this->sql([':prefix' => 'DELETE', ':from' => $table] + $fdq));
-    }
-    
-    /* helpers */
-    
-    public function escape($string)
-    {
-        return $this->_read->quote($string);
-    }
-
-    public function lastInsertId()
-    {
-        return $this->_read->lastInsertId();
-    }
-
-    public function count($table, array $statement, $expr = '*')
-    {
-        return $this->read($this->sql([':select' => "|count($expr)", ':from' => $table] + $statement));
-    }
-    
-    public function getPaging()
-    {
-        return $this->_paging;
-    }
-
     /* private api */
 
+    protected function __pdo()
+    {
+        throw new LogicException('Service `_pdo` not defined');
+    }
+    
     protected function __read()
     {
         return $this->_pdo;
@@ -497,11 +506,6 @@ class Db extends Container
         return $this->_pdo;
     }
 
-    protected function __pdo()
-    {
-        throw new LogicException('Service `_pdo` not defined');
-    }
-    
     protected function __paging()
     {
         return new Paging();
