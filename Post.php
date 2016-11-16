@@ -1,8 +1,10 @@
 <?php
 
-namespace \Fogio\Db;
 
-class Post extends TableAbstract 
+use Fogio\Db\Table\AbstractTable;
+use Fogio\Db\Table\Extension\A;
+
+class Post extends AbstractTable 
 {
 
     public function getName() 
@@ -47,7 +49,15 @@ class Post extends TableAbstract
         ];
     }
     
-    public function onFdq($fdq)
+    public function getExtensions()
+    {
+        return [
+//            new
+        ];
+        
+    }
+    
+    public function onFetch($fdq)
     {
         return $fdq;
     }
@@ -72,8 +82,4 @@ class Post extends TableAbstract
         
     }
     
-    public function onWrite($data, $fdq)
-    {
-        
-    }
 }
