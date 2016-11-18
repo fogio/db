@@ -1,23 +1,23 @@
 <?php
 
 
-use Fogio\Db\Table\AbstractTable;
-use Fogio\Db\Table\Extension\A;
+use Fogio\Db\Table\Table;
+use Fogio\Db\Table\Extension\Vcs;
 
-class Post extends AbstractTable 
+class Post extends Table 
 {
 
-    public function getName() 
+    protected function provideName() 
     {
         return 'post';
     }
 
-    public function getKey() 
+    protected function provideKey() 
     {
         return 'post_id';
     }
 
-    public function getFields() 
+    protected function provideFields() 
     {
         return [
             'post_id',
@@ -28,7 +28,17 @@ class Post extends AbstractTable
         ];
     }
 
-    public function  getLinks() 
+    protected function provideExtensions()
+    {
+        return [
+           (new DefaultOrder)->setOrder('post_id DESC'),
+           (new SerializeFields)->setFields(['post_attr']),
+           new Vcs(),
+        ];
+        
+    }
+    
+    protected function provideLinks() 
     {
         return [
             (new Link())
@@ -47,39 +57,6 @@ class Post extends AbstractTable
                 ->setJoin(Link::JOIN_INNER),
                 
         ];
-    }
-    
-    public function getExtensions()
-    {
-        return [
-//            new
-        ];
-        
-    }
-    
-    public function onFetch($fdq)
-    {
-        return $fdq;
-    }
-    
-    public function onResult($row)
-    {
-        return $row;
-    }
-    
-    public function onInsert($row)
-    {
-        return $row;
-    }
-    
-    public function onUpdate($data, $fdq)
-    {
-        
-    }
-    
-    public function onDelete($data, $fdq)
-    {
-        
     }
     
 }

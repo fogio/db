@@ -6,5 +6,5 @@ interface OnDeleteInterface
 {
     public function onDeletePre(array &$fdq, array &$event);
 
-    public function onDeletePost(array &$fdq, array &$event, &$result);
+    public function onDeletePost(array &$fdq, array &$event);
 }

@@ -32,7 +32,7 @@ class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareI
         $row[$this->field] = time();
     }
 
-    public function onInsertPost(array &$row, array &$event, &$result)
+    public function onInsertPost(array &$row, array &$event)
     {
     }
 
@@ -46,7 +46,7 @@ class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareI
         } 
     }
 
-    public function onInsertAllPost(array &$rows, array &$event, &$result)
+    public function onInsertAllPost(array &$rows, array &$event)
     {
     }
 }

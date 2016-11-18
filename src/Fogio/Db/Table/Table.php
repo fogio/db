@@ -6,7 +6,7 @@ use Fogio\Db\Db;
 use Fogio\Db\Table\Extension\TableAwareInterface;
 use Fogio\Container\ContainerTrait;
 
-class AbstractTable
+class Table
 {
 
     use ContainerTrait;
@@ -30,27 +30,101 @@ class AbstractTable
         return $this->_db;
     }
 
+    public function setName($name)
+    {
+        $this->_name = $name;
+
+        return $this;
+    }
+
     public function getName()
     {
-        throw new LogicException('getName() not implemented');
+        return $this->_name;
+    }
+
+    public function setKey($key)
+    {
+        $this->_key = $key;
     }
 
     public function getKey()
     {
-        return null;
+        return $this->_key;
+    }
+
+    public function setFields($fields)
+    {
+        $this->_fields = $fields;
+
+        return $this;
     }
 
     public function getFields()
     {
-        throw new LogicException('getFields() not implemented');
+        return $this->_fields;
     }
     
-    public function getExtensions()
+    public function setExtensions($extensions)
     {
+        // clean caches
+        unset(
+            $this->_extensionsFetch, $this->_extensionsFetchAll,
+            $this->_extensionsInsert, $this->_extensionsInsertAll,
+            $this->_extensionsUpdate, $this->_extensionsDelete
+        );
 
+        // inject
+        foreach ($extensions as $extension) {
+            if ($extension instanceof TableAwareInterface) {
+                $extension->setTable($this);
+            }
+        }
+
+        $this->_extensions = $extensions;
+        
+        return $this;
     }
 
-    public function getRelations()
+    public function getExtensions()
+    {
+        return $this->_extensions;
+    }
+
+    public function setLinks($links)
+    {
+        $this->_links = $links;
+    
+        return $this;
+    }
+    
+    public function getLinks()
+    {
+        return $this->_links;
+    }
+
+    /* provide */
+
+    protected function provideName() 
+    {
+        return null;
+    }
+
+    protected function provideKey() 
+    {
+        return null;
+    }
+
+    protected function provideFields() 
+    {
+        return [];
+    }
+
+    protected function provideExtensions()
+    {
+        return [];
+    }
+    
+    protected function provideLinks() 
     {
         return [];
     }
@@ -59,7 +133,7 @@ class AbstractTable
     
     public function getFetcher()
     {
-        return [':select' => $this->getFields(), ':from' => $this->getName()];
+        return [':select' => $this->_fields, ':from' => $this->_name];
     }
 
     public function fetch($fdq)
@@ -140,20 +214,30 @@ class AbstractTable
 
     protected function on($operation, $args)
     {
-        $args[] = []; // add event variable
-
-        foreach ($this->{"_extension$operation"} as $extension) { // pre
-            call_user_func_array([$extension, "on{$operation}Pre"], $args);
+        // middleware
+        $event = [];
+        $args[] &= $event;
+        $extensions &= $this->{"_extensions$operation"};
+        $lenght = count($extensions);
+        $i = 0;
+        // pre
+        while ($i < $lenght && !array_key_exists('result', $event)) {
+            call_user_func_array([extensions[$i], "on{$operation}Pre"], $args);
+            $i++;
         }
-        
-        $args[] = call_user_func_array([$this, "on{$operation}"], $args); // main, add result to args
-
-        foreach ($this->{"_extension$operation"} as $extension) { // pre
-            call_user_func_array([$extension, "on{$operation}Post"], $args);
+        // main 
+        if (!array_key_exists('result', $event)) {
+            $event['result'] = call_user_func_array([$this, "on{$operation}"], $args);
+        }
+        // post
+        while ($i >= 0 && $i < $lenght) {
+            call_user_func_array([extensions[$i], "on{$operation}Post"], $args);
+            $i--;
         }
 
-        return end($args);
+        return $event['result'];
     }
+
     protected function onFetch(array &$fdq, array &$event)
     {
         return $this->getDb()->fetch($fdq);
@@ -184,62 +268,78 @@ class AbstractTable
         return $this->getDb()->delete($this->getName(), $fdq);
     }
 
-    protected function extensionResolve($operation, $interface)
+    /* lazy */
+
+    protected function __name()
     {
-        $resolve = "_extension$operation"; 
-        $this->$resolve = [];
-        foreach ($this->_extension as $extension) { // $this->_extension - using container service
-            if ($extension instanceof $interface) {
-                $this->$resolve[] = $extension;
-            }
-        }
-        return $this->$resolve;
+        return $this->setName($this->provideName())->getName();
     }
- 
-    protected function __extension()
+
+    protected function __key()
     {
-        $this->_extension = $this->getExtensions();
+        return $this->setKey($this->provideKey())->getKey();
+    }
+
+    protected function __fields()
+    {
+        return $this->setFields($this->provideFields())->getFields();
+    }
+
+    protected function __links()
+    {
+        return $this->setLinks($this->provideLinks())->getLinks();
+    }
+
+    protected function __extensions()
+    {
+        return $this->setExtensions($this->provideExtensions())->getExtensions();
+    }
+
+    protected function __extensionsFetch()
+    {
+        return $this->_createExtensionsIndex('Fetch', OnFetchInterface::class);
+    }
+
+    protected function __extensionsFetchAll()
+    {
+        return $this->_createExtensionsIndex('FetchAll', OnFetchAllInterface::class);
+    }
+
+    protected function __extensionsInsert()
+    {
+        return $this->_createExtensionsIndex('Insert', OnInsertInterface::class);
+    }
+
+    protected function __extensionsInsertAll()
+    {
+        return $this->_createExtensionsIndex('InsertAll', OnInsertAllInterface::class);
+    }
+
+    protected function __extensionsUpdate()
+    {
+        return $this->_createExtensionsIndex('Update', OnUpdateInterface::class);
+    }
+
+    protected function __extensionsDelete()
+    {
+        return $this->_createExtensionsIndex('Delete', OnDeleteInterface::class);
+    }
+
+    protected function _createExtensionsIndex($operation, $interface)
+    {
+        $index = "_extensions$operation"; 
+        $this->$index = [];
         foreach ($this->_extension as $extension) {
-            if ($extension instanceof TableAwareInterface) {
-                $extension->setTable($this);
+            if ($extension instanceof $interface) {
+                $this->$index[] = $extension;
             }
         }
-        return $this->_extension;
-    }
-
-    protected function __extensionFetch()
-    {
-        return $this->extensionResolve('Fetch', OnFetchInterface::class);
-    }
-
-    protected function __extensionFetchAll()
-    {
-        return $this->extensionResolve('FetchAll', OnFetchAllInterface::class);
-    }
-
-    protected function __extensionInsert()
-    {
-        return $this->extensionResolve('Insert', OnInsertInterface::class);
-    }
-
-    protected function __extensionInsertAll()
-    {
-        return $this->extensionResolve('InsertAll', OnInsertAllInterface::class);
-    }
-
-    protected function __extensionUpdate()
-    {
-        return $this->extensionResolve('Update', OnUpdateInterface::class);
-    }
-
-    protected function __extensionDelete()
-    {
-        return $this->extensionResolve('Delete', OnDeleteInterface::class);
+        return $this->$index;
     }
 
     protected function __init()
     {
-        foreach ($this->_extension as $extension) {
+        foreach ($this->_extensions as $extension) {
             if ($extension instanceof OnExtendInterface) {
                 $extension->onExtend($this);
             }

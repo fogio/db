@@ -6,5 +6,5 @@ interface OnUpdateInterface
 {
     public function onUpdatePre(array &$data, array &$fdq, array &$event);
 
-    public function onUpdatePost(array &$data, array &$fdq, array &$event, &$result);
+    public function onUpdatePost(array &$data, array &$fdq, array &$event);
 }

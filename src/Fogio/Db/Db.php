@@ -16,7 +16,7 @@ class Db extends Container
         return $this;
     }
     
-    public function setPdoFactory($pdo)
+    public function setPdoProvider(Callable $pdo)
     {
         $this(['_pdo' => $pdo]);
         
@@ -28,7 +28,7 @@ class Db extends Container
         return $this->_pdo;
     }
     
-    public function setPagingFactory(Callable $factory)
+    public function setPagingProvider(Callable $factory)
     {
         $this(['_paging' => $factory]);
         
