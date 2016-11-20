@@ -2,11 +2,18 @@
 <!-- TOC -->
 
 - [Instalation](#instalation)
-- [Configuration](#configuration)
-- [FDQ](#fdq)
+- [Db](#db)
+    - [Configuration](#configuration)
+    - [FDQ](#fdq)
     - [CRUD](#crud)
     - [Transactions](#transactions)
-    - [Table](#table)
+- [Table](#table)
+    - [Defining Table](#defining-table)
+    - [Table CRUD](#table-crud)
+    - [Table extensions](#table-extensions)
+        - [Extending table functionality](#extending-table-functionality)
+        - [Extending queries, results](#extending-queries-results)
+        - [Defined Extensions](#defined-extensions)
 
 <!-- /TOC -->
 
@@ -18,10 +25,13 @@ Pdo wrapper; ORM; FDQ - Fogio DB Query; fast; customizable; table extensions; Ac
 composer require fogio/db
 ```
 
-# Configuration
+# Db
+
+The database object
+
+## Configuration
 
 ```php
-
 use Fogio\Db\Db;
 
 $db = new Db();
@@ -31,7 +41,7 @@ $db->setPdo(new Pdo('mysql:host=localhost;dbname=test'));
 $db->setPdoFactory(function(){ return new Pdo('mysql:host=localhost;dbname=test'); });
 ```
 
-# FDQ
+## FDQ
 
 FDQ - Fogio Db Query
 
@@ -78,7 +88,7 @@ $fdq = [
 - `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matched with fdq
 - `delete($table, array $fdq)` - Deletes rows
 
-[Crud](docs/Crud.md)
+[more](docs/Crud.md)
 
 
 ## Transactions
@@ -87,5 +97,73 @@ $fdq = [
 - `commit()` - Commits a transaction
 - `rollBack()` - Rolls back a transaction
 
-## Table
+# Table
 
+Table represents the table in database. Features:
+- holds infromation about fields, primary key,
+- methods for CRUD operations,
+- links mechnism for relations
+- extensions mechnism for extend table functionality, queries and results
+
+Table can be accessed by getting db property eg.
+
+```php
+use Fogio\Db\Db;
+
+$db = new Db();
+$db->setPdo(new Pdo('mysql:host=localhost;dbname=test'));
+$db->post; // instance of Fogio\Db\Table\Table
+```
+
+Db `Fogio\Db\Db` is a container `Fogio\Container\Container` of table `Fogio\Db\Table\Table` services.
+If table is not defined in Db, it will be automatically created throught [service factory mechanism](https://github.com/fogio/container#Service-Factory)
+Db will read schema using `SHOW TABLES` and `SELECT COLUMNS FROM table`.
+If you go to production or you want customize table, define table in db.
+ 
+## Defining Table 
+ 
+```php
+use Fogio\Db\Db;
+
+$db = new Db();
+$db->setPdo(new Pdo('mysql:host=localhost;dbname=test'));
+$db(['post' => Post::class]);
+
+class Post extends Table 
+{
+
+    protected function provideName() 
+    {
+        return 'post';
+    }
+
+    protected function provideKey() 
+    {
+        return 'post_id';
+    }
+
+    protected function provideFields() 
+    {
+        return [
+            'post_id',
+            'post_id_user',
+            'post_id_comment_first',
+            'post_id_comment_last',
+            'post_title',
+        ];
+    }
+    
+}
+
+```
+
+## Table CRUD
+
+## Table extensions
+
+### Extending table functionality
+
+### Extending queries, results
+operation like can be exten
+
+### Defined Extensions
