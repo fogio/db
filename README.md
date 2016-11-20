@@ -245,7 +245,7 @@ or by [invoke mechanism](https://github.com/fogio/container#invoke) `print_r($db
 
 CRUD operations can be extended by implmenting interface in extensions class.
 
-```
+```php
 namespace Fogio\Db\Table;
 
 interface On<operation>Interface
@@ -258,7 +258,7 @@ interface On<operation>Interface
 <operation> = Fetch|FetchAll|Insert|InsertAll|Update|Delete
 ```
 Eg.
-```
+```php
 use Fogio\Db\Table\Table;
 use Fogio\Db\Table\OnFetchAllInterface;
 use Fogio\Db\Table\EventFetchAll;
