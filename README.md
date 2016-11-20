@@ -66,22 +66,22 @@ $fdq = [
 Fetch
 
 - `fetchAll($fdq)` - Returns an array containing all of the result set rows
-- `fetch($fdq)` - returns first row
+- `fetch($fdq)` - Returns first row
 
 [more](docs/Fetch.md)
 
 Insert
 
 - `insert($table, array $row)` - Inserts row
-- `insertAll($table, array $rows)` - inserts many rows in one query
+- `insertAll($table, array $rows)` - Inserts many rows in one query
 
 Update
 
-- `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matchew with fdq 
+- `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matchew with fdq
 
-Delete 
+Delete
 
-- `delete($table, array $fdq)` - updates rows 
+- `delete($table, array $fdq)` - Deletes rows
 
 more [Delete]
 
