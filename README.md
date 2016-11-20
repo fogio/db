@@ -14,7 +14,7 @@
         - [Extending Table](#extending-table)
         - [Extending CRUD](#extending-crud)
             - [Events](#events)
-            - [Extension call flow](#extension-call-flow)
+            - [Extensions call flow](#extensions-call-flow)
         - [Defined Extensions](#defined-extensions)
 
 <!-- /TOC -->
@@ -361,7 +361,7 @@ class EventDelete extends Event
 }
 ```
 
-#### Extension call flow
+#### Extensions call flow
 
 Eg.
 ```
