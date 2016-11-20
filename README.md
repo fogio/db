@@ -191,6 +191,9 @@ class Post extends Table
 
 ### Extending Table
 
+Table is also a container. If extension implments `OnExtendInterface`, method `onExtend(Table $table)` will be called to initialize new functionality.
+Eg.
+ 
 ```php
 use Fogio\Db\Db;
 use Fogio\Db\Table\OnExtendInterface;
