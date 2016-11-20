@@ -11,6 +11,4 @@ class EventFetch extends Event
     {
         $this->fdq = $fdq;
     }
-
-    
 }
