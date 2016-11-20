@@ -118,7 +118,7 @@ $db->post; // instance of Fogio\Db\Table\Table
 ```
 
 Db `Fogio\Db\Db` is a container `Fogio\Container\Container` of table `Fogio\Db\Table\Table` services.
-If table is not defined in Db, it will be automatically created throught [service factory mechanism](https://github.com/fogio/container#Service-Factory).
+If table is not defined in Db, it will be automatically created throught [service factory mechanism](https://github.com/fogio/container#factory).
 Db will read schema using `SHOW TABLES` and `SELECT COLUMNS FROM table`.
 If you go to production or you want customize table, define table in db.
  
@@ -219,10 +219,16 @@ class Order implements TableAwareInterface, OnExtendInterface
         $table(['order' => $this]);
     }
 
+    public function invoke()
+    {
+        return $this->getNextFreeOrderNumber();
+    }
+
     public function getNextFreeOrderNumber()
     {
         return $this->table->fetchVal([':select' => '|MAX(post_order)']) + 1;
     }
+
 }
 
 $db = new Db();
@@ -231,6 +237,9 @@ $db(['post' => Post::class]);
 print_r($db->post->order->getNextFreeOrderNumber());
 
 ```
+
+or by [invoke mechanism](https://github.com/fogio/container#invoke) `print_r($db->post->order());`
+
 
 ### Extending CRUD
 
