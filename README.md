@@ -243,15 +243,19 @@ or by [invoke mechanism](https://github.com/fogio/container#invoke) `print_r($db
 
 ### Extending CRUD
 
-Operation like `Fetch`, `FetchAll`, `Insert`, `InsertAll`, `Update`, `Delete` can be extended by implmenting interface in extensions class.
+CRUD operations can be extended by implmenting interface in extensions class.
 
 ```
+namespace Fogio\Db\Table;
+
 interface On<operation>Interface
 {
     public function on<operation>Pre(Event<operation> $event);
 
     public function on<operation>Post(Event<operation> $event);
 }
+
+<operation> = Fetch|FetchAll|Insert|InsertAll|Update|Delete
 ```
 Eg.
 ```
