@@ -68,26 +68,22 @@ Fetch
 - `fetchAll($fdq)` - Returns an array containing all of the result set rows
 - `fetch($fdq)` - returns first row
 
-more [Fetch](docs/Fetch.md) 
+[more](docs/Fetch.md)
 
 Insert
 
 - `insert($table, array $row)` - Inserts row
 - `insertAll($table, array $rows)` - inserts many rows in one query
 
-more [Insert](docs/Insert.md) 
-
 Update
 
 - `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matchew with fdq 
 
-more [Update](docs/Update.md) 
-
-Delete
+Delete 
 
 - `delete($table, array $fdq)` - updates rows 
 
-more [Delete](docs/Delete.md) 
+more [Delete]
 
 ## Transactions
 
