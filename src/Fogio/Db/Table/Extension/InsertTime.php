@@ -24,7 +24,7 @@ class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareI
         return $this->field;
     }
 
-    public function onInsertPre(array &$row, array &$event)
+    public function onInsertPre(EventInsert $event)
     {
         if (array_key_exists($this->field, $row)) {
             return;

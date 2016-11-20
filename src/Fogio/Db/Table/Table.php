@@ -3,7 +3,6 @@
 namespace Fogio\Db\Table;
 
 use Fogio\Db\Db;
-use Fogio\Db\Table\Extension\TableAwareInterface;
 use Fogio\Container\ContainerTrait;
 
 class Table
@@ -106,17 +105,17 @@ class Table
 
     protected function provideName() 
     {
-        return null;
+        return lcfirst((new \ReflectionClass($this))->getShortName());
     }
 
     protected function provideKey() 
     {
-        return null;
+        return $this->_db->_schema->{$this->_name}->key;
     }
 
     protected function provideFields() 
     {
-        return [];
+        return $this->_db->_schema->{$this->_name}->fields;
     }
 
     protected function provideExtensions()
@@ -138,12 +137,12 @@ class Table
 
     public function fetch($fdq)
     {
-        return $this->_on('Fetch', [$fdq + $this->getFetcher()]);
+        return $this->_event(new EventFetch($fdq + $this->getFetcher()));
     }
 
     public function fetchAll($fdq)
     {
-        return $this->_on('FetchAll', [$fdq + $this->getFetcher()]);
+        return $this->_event(new EventFetchAll($fdq + $this->getFetcher()));
     }
 
     public function fetchCol($fdq)
@@ -175,22 +174,22 @@ class Table
 
     public function insert(array $row)
     {
-        return $this->_on('Insert', [$row]);
+        return $this->_event(new EventInsert($row));
     }
 
     public function insertAll(array $rows)
     {
-        return $this->_on('InsertAll', [$rows]);
+        return $this->_event(new EventInsertAll($rows));
     }
 
     public function update(array $data, array $fdq)
     {
-        return $this->_on('Update', [$data, $fdq]);
+        return $this->_event(new EventUpdate($data, $fdq));
     }
 
     public function delete(array $fdq)
     {
-        return $this->_on('Delete', [$fdq]);
+        return $this->_event(new EventDelete($$fdq));
     }
 
     public function save($row)
@@ -212,30 +211,28 @@ class Table
 
     /* extension */
 
-    protected function on($operation, $args)
+    protected function _event($event)
     {
         // middleware
-        $event = [];
-        $args[] &= $event;
-        $extensions &= $this->{"_extensions$operation"};
+        $extensions &= $this->{"_extensions" . $event->id};
         $lenght = count($extensions);
         $i = 0;
         // pre
-        while ($i < $lenght && !array_key_exists('result', $event)) {
-            call_user_func_array([extensions[$i], "on{$operation}Pre"], $args);
+        while ($i < $lenght && $event->stop === false) {
+            call_user_func([$extensions[$i], "on{$$event->id}Pre"], $event);
             $i++;
         }
         // main 
-        if (!array_key_exists('result', $event)) {
-            $event['result'] = call_user_func_array([$this, "on{$operation}"], $args);
+        if ($event->stop === false) {
+            $event->val = call_user_func([$this, "on{$$event->id}"], $event);
         }
         // post
         while ($i >= 0 && $i < $lenght) {
-            call_user_func_array([extensions[$i], "on{$operation}Post"], $args);
+            call_user_func([$extensions[$i], "on{$$event->id}Post"], $event);
             $i--;
         }
 
-        return $event['result'];
+        return $event->val;
     }
 
     protected function onFetch(array &$fdq, array &$event)
@@ -250,22 +247,22 @@ class Table
 
     protected function onInsert(array &$row, array &$event)
     {
-        return $this->getDb()->insert($this->getName(), $row);
+        return $this->getDb()->insert($this->_name, $row);
     }
 
     protected function onInsertAll(array &$rows, array &$event)
     {
-        return $this->getDb()->insertAll($this->getName(), $rows);
+        return $this->getDb()->insertAll($this->_name, $rows);
     }
 
     protected function onUpdate(array &$data, array &$fdq, array &$event)
     {
-        return $this->getDb()->update($this->getName(), $data, $fdq);
+        return $this->getDb()->update($this->_name, $data, $fdq);
     }
 
     protected function onDelete(array &$fdq, array &$event)
     {
-        return $this->getDb()->delete($this->getName(), $fdq);
+        return $this->getDb()->delete($this->_name, $fdq);
     }
 
     /* lazy */

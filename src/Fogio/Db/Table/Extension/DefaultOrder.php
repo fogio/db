@@ -2,6 +2,11 @@
 
 namespace Fogio\Db\Table\Extension;
 
+use Fogio\Db\Table\OnFetchAllInterface;
+use Fogio\Db\Table\EventFetchAll;
+use Fogio\Db\Table\TableAwareInterface;
+use Fogio\Db\Table\TableAwareTrait;
+
 class DefaultOrder implements OnFetchAllInterface, TableAwareInterface
 {
     use TableAwareTrait;
@@ -13,9 +18,9 @@ class DefaultOrder implements OnFetchAllInterface, TableAwareInterface
         $this->order = $order;
     }
 
-    public function onFetchAllPre(array &$fdq, array &$event)
+    public function onFetchAllPre(EventFetchAll $event)
     {
-        if (isset($fdq[':order'])) {
+        if (isset($event->fdq[':order'])) {
             return;
         }
 
@@ -23,10 +28,10 @@ class DefaultOrder implements OnFetchAllInterface, TableAwareInterface
             $this->order = "`{$this->table->getKey()}` ASC";
         }
 
-        $fdq[':order'] = $this->order;
+        $event->fdq[':order'] = $this->order;
     }
 
-    public function onFetchAllPost(array &$fdq, array &$event, &$result)
+    public function onFetchAllPost(EventFetchAll $event)
     {
     }
 }

@@ -1,8 +1,6 @@
 <?php
 
-namespace Fogio\Db\Table\Extension;
-
-use Fogio\Db\Table\Table;
+namespace Fogio\Db\Table;
 
 interface OnExtendInterface
 {
