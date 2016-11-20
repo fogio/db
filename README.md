@@ -63,27 +63,15 @@ $fdq = [
 
 ## CRUD
 
-Fetch
-
 - `fetchAll($fdq)` - Returns an array containing all of the result set rows
 - `fetch($fdq)` - Returns first row
-
-[more](docs/Fetch.md)
-
-Insert
-
 - `insert($table, array $row)` - Inserts row
 - `insertAll($table, array $rows)` - Inserts many rows in one query
-
-Update
-
 - `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matchew with fdq
-
-Delete
-
 - `delete($table, array $fdq)` - Deletes rows
 
-more [Delete]
+[more](docs/Crud.md)
+
 
 ## Transactions
 

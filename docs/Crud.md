@@ -1,4 +1,3 @@
-# Read
 
 `$db` is an instace of `Fogio\Db\Db`. We've got example data:
 
@@ -15,6 +14,8 @@
 | 5       | Eee        | Eee eee   |
 +---------+------------+-----------+
 ```
+
+# Read
 
 ## fetchAll
 
