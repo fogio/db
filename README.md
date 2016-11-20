@@ -1,18 +1,26 @@
 
-# Fogio Db
+<!-- TOC -->
 
-Pdo wrapper; ORM; FDQ - Fogio DB Query; fast; customizable;
+- [Instalation](#instalation)
+- [Configuration](#configuration)
+- [FDQ](#fdq)
+    - [CRUD](#crud)
+    - [Transactions](#transactions)
+    - [Table](#table)
 
-## Instalation
+<!-- /TOC -->
+
+Pdo wrapper; ORM; FDQ - Fogio DB Query; fast; customizable; table extensions; Active Record
+
+# Instalation
 
 ```
 composer require fogio/db
 ```
 
-## Configuration
+# Configuration
 
 ```php
-<?php
 
 use Fogio\Db\Db;
 
@@ -23,7 +31,7 @@ $db->setPdo(new Pdo('mysql:host=localhost;dbname=test'));
 $db->setPdoFactory(function(){ return new Pdo('mysql:host=localhost;dbname=test'); });
 ```
 
-## FDQ
+# FDQ
 
 FDQ - Fogio Db Query
 
@@ -67,7 +75,7 @@ $fdq = [
 - `fetch($fdq)` - Returns first row
 - `insert($table, array $row)` - Inserts row
 - `insertAll($table, array $rows)` - Inserts many rows in one query
-- `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matchew with fdq
+- `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matched with fdq
 - `delete($table, array $fdq)` - Deletes rows
 
 [Crud](docs/Crud.md)
