@@ -105,7 +105,7 @@ Table represents the table in database. Features:
 - infromation about fields, primary key,
 - CRUD operations,
 - links mechnism for relations,
-- extensions mechnism for extending table functionality, queries and results
+- extensions mechnism for extending table functionality, queries and results.
 
 Table can be accessed by getting db property eg.
 
