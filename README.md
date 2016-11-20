@@ -221,7 +221,7 @@ class Order implements TableAwareInterface, OnExtendInterface
 
     public function getNextFreeOrderNumber()
     {
-        return $this->table->fetchVal([':select' => '|MAX(post_order)]) + 1;
+        return $this->table->fetchVal([':select' => '|MAX(post_order)']) + 1;
     }
 }
 
