@@ -364,7 +364,7 @@ class EventDelete extends Event
 #### Extensions call flow
 
 Eg.
-```
+```php
 use Fogio\Db\Table\OnFetchInterface;
 use Fogio\Db\Table\EventFetch;
 
