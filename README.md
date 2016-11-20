@@ -70,7 +70,7 @@ $fdq = [
 - `update($table, array $data, array $fdq)` - Updates rows. Sets data for rows matchew with fdq
 - `delete($table, array $fdq)` - Deletes rows
 
-[more](docs/Crud.md)
+[Crud](docs/Crud.md)
 
 
 ## Transactions
