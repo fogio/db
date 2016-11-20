@@ -315,7 +315,7 @@ $db->post->fetchAll();
 
 #### Events
 
-```
+```php
 namespace Fogio\Db\Table;
 
 class Event 
