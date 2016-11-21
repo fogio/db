@@ -13,7 +13,7 @@
     - [Table extensions](#table-extensions)
         - [Extending Table](#extending-table)
         - [Extending CRUD](#extending-crud)
-            - [Events](#events)
+            - [Process params](#process-params)
             - [Extensions call flow](#extensions-call-flow)
         - [Defined Extensions](#defined-extensions)
 
@@ -250,9 +250,8 @@ namespace Fogio\Db\Table;
 
 interface On<operation>Interface
 {
-    public function on<operation>Pre(Event<operation> $event);
+    public function on<operation>(Process $process);
 
-    public function on<operation>Post(Event<operation> $event);
 }
 
 <operation> = Fetch|FetchAll|Insert|InsertAll|Update|Delete
@@ -313,53 +312,9 @@ $db->post->fetchAll();
 
 ```
 
-#### Events
+#### Process params
 
-```php
-namespace Fogio\Db\Table;
 
-class Event 
-{
-    public $val;
-    public $stop = false;
-}
-
-class EventFetch extends Event
-{
-    public $id = 'Fetch';
-    public $fdq;
-}
-
-class EventFetchAll extends EventFetch
-{
-    public $id = 'FetchAll';
-}
-
-class EventInsert extends Event
-{
-    public $id = 'Insert';
-    public $row;
-}
-
-class EventInsertAll extends Event
-{
-    public $id = 'InsertAll';
-    public $rows;
-}
-
-class EventUpdate extends Event
-{
-    public $id = 'Update';
-    public $data;
-    public $fdq;
-}
-
-class EventDelete extends Event
-{
-    public $id = 'Delete';
-    public $fdq;
-}
-```
 
 #### Extensions call flow
 

@@ -1,12 +1,13 @@
 <?php
 
-namespace \Fogio\Db;
+namespace \Fogio\Db\Table\Extension;
 
 use Fogio\Paging\PagingInterface;
 
-class Model
+class Record implements OnExtendInterface
 {
-    protected $_db;
+    use TableAwareTrait;
+
     protected $_table;
     protected $_alias;
     protected $_key;
@@ -15,26 +16,14 @@ class Model
     protected $_param;
     protected $_result;
 
+    public function onExtend(Table $table)
+    {
+        $table(['record' => function ($table) {
+            return (new self())->setTable($table)->setFields($table->getFields())->setKey($table->getKey());
+        }]);
+    }
+
     /* setup */
-
-    public function setDb(Db $db)
-    {
-        $this->_db = $db;
-
-        return $this;
-    }
-
-    public function getDb()
-    {
-        return $this->_db;
-    }
-
-    public function setTable($table)
-    {
-        $this->_table = $table;
-
-        return $this;
-    }
 
     public function getTable()
     {
@@ -203,20 +192,20 @@ class Model
         return $this->_result;
     }
 
-    public function getResultModel()
-    {
-        return $this->_db->{$this->_table}->setActiveRecordResult($this->getResult());
-    }
+    // public function getResultModel()
+    // {
+    //     return $this->_db->{$this->_table}->setActiveRecordResult($this->getResult());
+    // }
 
-    public function getResultModels()
-    {
-        $models = [];
-        foreach ($this->_result as $result) {
-            $models[] = $this->_db->{$this->_table}->setActiveRecordResult($result);
-        }
+    // public function getResultModels()
+    // {
+    //     $models = [];
+    //     foreach ($this->_result as $result) {
+    //         $models[] = $this->_db->{$this->_table}->setActiveRecordResult($result);
+    //     }
 
-        return $models;
-    }
+    //     return $models;
+    // }
 
     /* param */
 

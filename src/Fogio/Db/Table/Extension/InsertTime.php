@@ -24,29 +24,24 @@ class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareI
         return $this->field;
     }
 
-    public function onInsertPre(EventInsert $event)
+    public function onInsert(Process $process)
     {
-        if (array_key_exists($this->field, $row)) {
+        if (array_key_exists($this->field, $process->row)) {
             return;
         }
-        $row[$this->field] = time();
+        $process->row[$this->field] = time();
+        $process();
     }
 
-    public function onInsertPost(array &$row, array &$event)
-    {
-    }
-
-    public function onInsertAllPre(array &$rows, array &$event)
+    public function onInsertAll(Process $process)
     {
         $time = time();
-        foreach ($rows as $k => $row) {
+        foreach ($process->rows as $k => $row) {
             if (!array_key_exists($this->field, $row)) {
-                $rows[$k][$this->field] = $time;
+                $process->rows[$k][$this->field] = $time;
             }
         } 
+        $process();
     }
 
-    public function onInsertAllPost(array &$rows, array &$event)
-    {
-    }
 }

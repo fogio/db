@@ -2,8 +2,14 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Table\Table;
 use Fogio\Db\Db;
+use Fogio\Db\Table\Table;
+use Fogio\Db\Table\Extensions\OnFetchInterface;
+use Fogio\Db\Table\Extensions\OnFetchAllInterface;
+use Fogio\Db\Table\Extensions\OnInsertInterface;
+use Fogio\Db\Table\Extensions\OnInsertAllInterface;
+use Fogio\Db\Table\Extensions\OnUpdateInterface;
+
 
 class SerializeFields implements 
     OnFetchInterface, OnFetchAllInterface, 
@@ -14,58 +20,48 @@ class SerializeFields implements
 
     public function setFields($fields)
     {
-        $this->$fields = $fields;
+        $this->fields = $fields;
     
         return $this;
     }
 
-    public function onFetchPre(array &$fdq, array &$event)
+    public function onFetch(Process $process)
     {
-    }
+        $process();
 
-    public function onFetchPost(array &$fdq, array &$event)
-    {
-        if (!is_array($event['result'])) {
+        if (!is_array($process->val)) {
             return;
         }
 
-        $event['result'] = $this->decodeRow($event['result']);
+        $process->val = $this->decodeRow($process->val);
     }    
 
-    public function onFetchAllPre(array &$fdq, array &$event)
+    public function onFetchAll(Process $process)
     {
-    }
+        $process();
 
-    public function onFetchAllPost(array &$fdq, array &$event)
-    {
-        $event['result'] = $this->decodeRows($event['result']);
+        $process->val = $this->decodeRows($process->val);
     }
     
-    public function onInsertPre(array &$row, array &$event)
+    public function onInsert(Process $process)
     {
-        $row = $this->encodeRow($row);
+        $process->row = $this->encodeRow($$process->row);
+
+        $process();
     }
 
-    public function onInsertPost(array &$row, array &$event)
+    public function onInsertAllPre(Process $process)
     {
+        $process->rows = $this->encodeRows($process->rows);
+
+        $process();
     }
 
-    public function onInsertAllPre(array &$rows, array &$event)
+    public function onUpdate(Process $process)
     {
-        $row = $this->encodeRows($row);
-    }
+        $process->data = $this->encodeRow($process->data);
 
-    public function onInsertAllPost(array &$rows, array &$event)
-    {
-    }
-
-    public function onUpdatePre(array &$data, array &$fdq, array &$event)
-    {
-        $data = $this->encodeRow($data);
-    }
-
-    public function onUpdatePost(array &$data, array &$fdq, array &$event)
-    {
+        $process();
     }
 
     protected function encode($notScalar)

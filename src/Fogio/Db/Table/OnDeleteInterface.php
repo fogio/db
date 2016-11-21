@@ -4,7 +4,5 @@ namespace Fogio\Db\Table;
 
 interface OnDeleteInterface
 {
-    public function onDeletePre(EventDelete $event);
-
-    public function onDeletePost(EventDelete $event);
+    public function onDelete(Process $process);
 }

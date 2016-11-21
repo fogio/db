@@ -2,7 +2,8 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Table\Table;
+use Fogio\Db\Table\OnUpdateInterface;
+use Fogio\Db\Table\TableAwareInterface;
 
 class UpdateTime implements OnUpdateInterface, TableAwareInterface
 {
@@ -24,16 +25,15 @@ class UpdateTime implements OnUpdateInterface, TableAwareInterface
         return $this->field;
     }
 
-    public function onUpdatePre(array &$data, array &$fdq, array &$event)
+    public function onUpdate(Process $process)
     {
-        if (array_key_exists($this->field, $data)) {
+        if (array_key_exists($this->field, $process->data)) {
             return;
         }
-        $data[$this->field] = time();
+        $process->data[$this->field] = time();
+
+        $process();
     }
 
-    public function onUpdatePost(array &$data, array &$fdq, array &$event, &$result)
-    {
-    }
 
 }

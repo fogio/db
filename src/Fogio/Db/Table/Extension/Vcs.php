@@ -1,5 +1,6 @@
 <?php
 
+/*
 namespace Fogio\Db\Table\Extension;
 
 use Fogio\Container\ContainerTrait;
@@ -34,7 +35,7 @@ class Vcs implements
     protected $_onDeletePre  = false;
     protected $_onDeletePost = false;
 
-    /* setup */
+    /* setup * /
 
     public function setDb(Db $db)
     {
@@ -102,7 +103,7 @@ class Vcs implements
         $this->setStrategy(false, false, false, true, false);
     }
 
-    /* extension */
+    /* extension * /
 
     public function onExtend(Table $table)
     {
@@ -155,7 +156,7 @@ class Vcs implements
     }
 
 
-    /* api */
+    /* api * /
 
     public function fetch(array $fdq)
     {
@@ -178,7 +179,7 @@ class Vcs implements
          return $this->_db->delete($this->_table, $fdq);
     }
 
-    /* helpers */
+    /* helpers * /
 
     protected function prepare($event)
     {
@@ -227,7 +228,7 @@ class Vcs implements
         $this->_db->insert($this->_table, $event->vcs->snapshot);
     }
 
-    /* defaults */
+    /* defaults * /
 
     protected function __db()
     {
@@ -240,3 +241,5 @@ class Vcs implements
     }
 
 }
+
+*/

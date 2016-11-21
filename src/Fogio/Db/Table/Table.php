@@ -67,9 +67,9 @@ class Table
     {
         // clean caches
         unset(
-            $this->_extensionsFetch, $this->_extensionsFetchAll,
-            $this->_extensionsInsert, $this->_extensionsInsertAll,
-            $this->_extensionsUpdate, $this->_extensionsDelete
+            $this->_extFetch, $this->_extFetchAll,
+            $this->_extInsert, $this->_extInsertAll,
+            $this->_extUpdate, $this->_extDelete
         );
 
         // inject
@@ -79,14 +79,14 @@ class Table
             }
         }
 
-        $this->_extensions = $extensions;
+        $this->_ext = $extensions;
         
         return $this;
     }
 
     public function getExtensions()
     {
-        return $this->_extensions;
+        return $this->_ext;
     }
 
     public function setLinks($links)
@@ -137,12 +137,12 @@ class Table
 
     public function fetch($fdq)
     {
-        return $this->_event(new EventFetch($fdq + $this->getFetcher()));
+        return (new Process($this->_extFetch, 'onFetch', ['fdq' => $fdq + $this->getFetcher()]))->__invoke()->val;
     }
 
     public function fetchAll($fdq)
     {
-        return $this->_event(new EventFetchAll($fdq + $this->getFetcher()));
+        return (new Process($this->_extFetchAll, 'onFetchAll', ['fdq' => $fdq + $this->getFetcher()]))->__invoke()->val;
     }
 
     public function fetchCol($fdq)
@@ -174,95 +174,54 @@ class Table
 
     public function insert(array $row)
     {
-        return $this->_event(new EventInsert($row));
+        return (new Process($this->_extInsert, 'onInsert', ['row' => $row]))->__invoke()->val;
     }
 
     public function insertAll(array $rows)
     {
-        return $this->_event(new EventInsertAll($rows));
+        return (new Process($this->_extInsertAll, 'onInsertAll', ['rows' => $rows]))->__invoke()->val;
     }
 
     public function update(array $data, array $fdq)
     {
-        return $this->_event(new EventUpdate($data, $fdq));
+        return (new Process($this->_extUpdate, 'onUpdate', ['data' => $data, 'fdq' => $fdq]))->__invoke()->val;
     }
 
     public function delete(array $fdq)
     {
-        return $this->_event(new EventDelete($$fdq));
-    }
-
-    public function save($row)
-    {
-        $key = $this->getKey();
-        
-        if ($key === null) {
-            throw new LogicException();
-        }
-        
-        if ($row[$key] === null) {
-            return $this->insert($row);
-        } else {
-            $fdq = [$key => $row[$key]];
-            unset($row[$key]);
-            return $this->update($row, $fdq);
-        }
+        return (new Process($this->_extDelete, 'onDelete', ['fdq' => $fdq]))->__invoke()->val;
     }
 
     /* extension */
 
-    protected function _event($event)
+    protected function onFetch(Process $process)
     {
-        // middleware
-        $extensions &= $this->{"_extensions" . $event->id};
-        $lenght = count($extensions);
-        $i = 0;
-        // pre
-        while ($i < $lenght && $event->stop === false) {
-            call_user_func([$extensions[$i], "on{$$event->id}Pre"], $event);
-            $i++;
-        }
-        // main 
-        if ($event->stop === false) {
-            $event->val = call_user_func([$this, "on{$$event->id}"], $event);
-        }
-        // post
-        while ($i >= 0 && $i < $lenght) {
-            call_user_func([$extensions[$i], "on{$$event->id}Post"], $event);
-            $i--;
-        }
-
-        return $event->val;
+        $process->val = $this->getDb()->fetch($process->fdq);
     }
 
-    protected function onFetch(array &$fdq, array &$event)
+    protected function onFetchAll(Process $process)
     {
-        return $this->getDb()->fetch($fdq);
+        $process->val = $this->getDb()->fetchAll($process->fdq);
     }
 
-    protected function onFetchAll(array &$fdq, array &$event)
+    protected function onInsert(Process $process)
     {
-        return $this->getDb()->fetchAll($fdq);
+        $process->val = $this->getDb()->insert($this->_name, $process->row);
     }
 
-    protected function onInsert(array &$row, array &$event)
+    protected function onInsertAll(Process $process)
     {
-        return $this->getDb()->insert($this->_name, $row);
+        $process->val = $this->getDb()->insertAll($this->_name, $process->rows);
     }
 
-    protected function onInsertAll(array &$rows, array &$event)
+    protected function onUpdate(Process $process)
     {
-        return $this->getDb()->insertAll($this->_name, $rows);
+        $process->val = $this->getDb()->update($this->_name, $process->data, $process->fdq);
     }
 
-    protected function onUpdate(array &$data, array &$fdq, array &$event)
+    protected function onDelete(Process $process)
     {
-        return $this->getDb()->update($this->_name, $data, $fdq);
-    }
-
-    protected function onDelete(array &$fdq, array &$event)
-    {
-        return $this->getDb()->delete($this->_name, $fdq);
+        $process->val = $this->getDb()->delete($this->_name, $process->fdq);
     }
 
     /* lazy */
@@ -287,56 +246,57 @@ class Table
         return $this->setLinks($this->provideLinks())->getLinks();
     }
 
-    protected function __extensions()
+    protected function __ext()
     {
         return $this->setExtensions($this->provideExtensions())->getExtensions();
     }
 
-    protected function __extensionsFetch()
+    protected function __extFetch()
     {
-        return $this->_createExtensionsIndex('Fetch', OnFetchInterface::class);
+        return $this->_extIndex('Fetch', OnFetchInterface::class);
     }
 
-    protected function __extensionsFetchAll()
+    protected function __extFetchAll()
     {
-        return $this->_createExtensionsIndex('FetchAll', OnFetchAllInterface::class);
+        return $this->_extIndex('FetchAll', OnFetchAllInterface::class);
     }
 
-    protected function __extensionsInsert()
+    protected function __extInsert()
     {
-        return $this->_createExtensionsIndex('Insert', OnInsertInterface::class);
+        return $this->_extIndex('Insert', OnInsertInterface::class);
     }
 
-    protected function __extensionsInsertAll()
+    protected function __extInsertAll()
     {
-        return $this->_createExtensionsIndex('InsertAll', OnInsertAllInterface::class);
+        return $this->_extIndex('InsertAll', OnInsertAllInterface::class);
     }
 
-    protected function __extensionsUpdate()
+    protected function __extUpdate()
     {
-        return $this->_createExtensionsIndex('Update', OnUpdateInterface::class);
+        return $this->_extIndex('Update', OnUpdateInterface::class);
     }
 
-    protected function __extensionsDelete()
+    protected function __extDelete()
     {
-        return $this->_createExtensionsIndex('Delete', OnDeleteInterface::class);
+        return $this->_extIndex('Delete', OnDeleteInterface::class);
     }
 
-    protected function _createExtensionsIndex($operation, $interface)
+    protected function _extIndex($operation, $interface)
     {
-        $index = "_extensions$operation"; 
+        $index = "_ext$operation"; 
         $this->$index = [];
         foreach ($this->_extension as $extension) {
             if ($extension instanceof $interface) {
                 $this->$index[] = $extension;
             }
         }
+        $this->$index[] = $this;
         return $this->$index;
     }
 
     protected function __init()
     {
-        foreach ($this->_extensions as $extension) {
+        foreach ($this->_ext as $extension) {
             if ($extension instanceof OnExtendInterface) {
                 $extension->onExtend($this);
             }
