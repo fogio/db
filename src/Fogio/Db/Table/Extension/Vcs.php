@@ -18,11 +18,10 @@ use Fogio\Db\Table\EventDelete;
 
 
 class Vcs implements 
-    TableAwareInterface, OnExtendInterface, 
+    OnExtendInterface, 
     OnInsertInterface, OnInsertAllInterface,
     OnUpdateInterface, OnDeleteInterface 
 {
-    use TableAwareTrait;
     use ContainerTrait;
 
     protected $_fieldCommitAt  = 'vcs_insert';  // integer

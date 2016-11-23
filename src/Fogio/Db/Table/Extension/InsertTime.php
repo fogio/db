@@ -3,11 +3,11 @@
 namespace Fogio\Db\Table\Extension;
 
 use Fogio\Db\Table\Table;
+use Fogio\Db\Table\OnInsertInterface;
+use Fogio\Db\Table\OnInsertAllInterface;
 
-class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareInterface
+class InsertTime implements OnInsertInterface, OnInsertAllInterface
 {
-    use TableAwareTrait;
-
     protected $field;
 
     public function setField($field)
@@ -15,21 +15,12 @@ class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareI
         $this->field = $field;
     }
 
-    public function getField()
-    {
-        if ($this->field === null) {
-            $this->field = "{$this->table->getName()}_insert";
-        }
-
-        return $this->field;
-    }
-
     public function onInsert(Process $process)
     {
-        if (array_key_exists($this->field, $process->row)) {
-            return;
+        $field = $this->getField($process);
+        if (!array_key_exists($field, $process->row)) {
+            $process->row[$field] = time();
         }
-        $process->row[$this->field] = time();
         $process();
     }
 
@@ -37,11 +28,20 @@ class InsertTime implements OnInsertInterface, OnInsertAllInterface, TableAwareI
     {
         $time = time();
         foreach ($process->rows as $k => $row) {
-            if (!array_key_exists($this->field, $row)) {
-                $process->rows[$k][$this->field] = $time;
+            if (!array_key_exists($field, $row)) {
+                $process->rows[$k][$field] = $time;
             }
         } 
         $process();
+    }
+
+    protected function getField(Process $process)
+    {
+        if ($this->field === null) {
+            $this->field = "{$process->table->getName()}_insert";
+        }
+
+        return $this->field;
     }
 
 }

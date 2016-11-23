@@ -3,12 +3,9 @@
 namespace Fogio\Db\Table\Extension;
 
 use Fogio\Db\Table\OnUpdateInterface;
-use Fogio\Db\Table\TableAwareInterface;
 
-class UpdateTime implements OnUpdateInterface, TableAwareInterface
+class UpdateTime implements OnUpdateInterface
 {
-    use TableAwareTrait;
-
     protected $field;
 
     public function setField($field)
@@ -16,24 +13,17 @@ class UpdateTime implements OnUpdateInterface, TableAwareInterface
         $this->field = $field;
     }
 
-    public function getField()
-    {
-        if ($this->field === null) {
-            $this->field = "{$this->table->getName()}_update";
-        }
-
-        return $this->field;
-    }
-
     public function onUpdate(Process $process)
     {
-        if (array_key_exists($this->field, $process->data)) {
-            return;
+        if ($this->field === null) {
+            $this->field = "{$process->table->getName()}_update";
         }
-        $process->data[$this->field] = time();
+
+        if (!array_key_exists($this->field, $process->data)) {
+            $process->data[$this->field] = time();
+        }
 
         $process();
     }
-
 
 }

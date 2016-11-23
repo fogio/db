@@ -29,18 +29,18 @@ class SerializeFields implements
     {
         $process();
 
-        if (!is_array($process->val)) {
+        if (!is_array($process->result)) {
             return;
         }
 
-        $process->val = $this->decodeRow($process->val);
+        $process->result = $this->decodeRow($process->result);
     }    
 
     public function onFetchAll(Process $process)
     {
         $process();
 
-        $process->val = $this->decodeRows($process->val);
+        $process->result = $this->decodeRows($process->result);
     }
     
     public function onInsert(Process $process)

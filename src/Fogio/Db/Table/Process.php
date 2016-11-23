@@ -18,13 +18,26 @@ class Process
 
     public function __invoke()
     {
-        $task = current($this->_tasks);
-        if (!$task) {
-            return $this;
+        $task = array_shift($this->_tasks);
+        if ($task) {
+            $taks->{$this->_method}($this);
         }
-        next($this->_tasks);
-        $taks->{$this->_method}($this);
+        
         return $this;
+    }
+
+    public function unshift($task)
+    {
+        array_unshift($this->_tasks, $task);
+
+        return $this; 
+    }
+
+    public function push($task)
+    {
+        $this->_tasks[] = $task;
+
+        return $this; 
     }
 
 }

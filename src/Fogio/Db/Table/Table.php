@@ -69,15 +69,9 @@ class Table
         unset(
             $this->_extFetch, $this->_extFetchAll,
             $this->_extInsert, $this->_extInsertAll,
-            $this->_extUpdate, $this->_extDelete
+            $this->_extUpdate, $this->_extDelete,
+            $this->_init // for ExtendTableInterface
         );
-
-        // inject
-        foreach ($extensions as $extension) {
-            if ($extension instanceof TableAwareInterface) {
-                $extension->setTable($this);
-            }
-        }
 
         $this->_ext = $extensions;
         
@@ -137,12 +131,12 @@ class Table
 
     public function fetch($fdq)
     {
-        return (new Process($this->_extFetch, 'onFetch', ['fdq' => $fdq + $this->getFetcher()]))->__invoke()->val;
+        return (new Process($this->_extFetch, 'onFetch', ['table' => $this, 'fdq' => $fdq + $this->getFetcher()]))->__invoke()->result;
     }
 
     public function fetchAll($fdq)
     {
-        return (new Process($this->_extFetchAll, 'onFetchAll', ['fdq' => $fdq + $this->getFetcher()]))->__invoke()->val;
+        return (new Process($this->_extFetchAll, 'onFetchAll', ['table' => $this, 'fdq' => $fdq + $this->getFetcher()]))->__invoke()->result;
     }
 
     public function fetchCol($fdq)
@@ -174,54 +168,60 @@ class Table
 
     public function insert(array $row)
     {
-        return (new Process($this->_extInsert, 'onInsert', ['row' => $row]))->__invoke()->val;
+        return (new Process($this->_extInsert, 'onInsert', ['table' => $this, 'row' => $row]))->__invoke()->result;
     }
 
     public function insertAll(array $rows)
     {
-        return (new Process($this->_extInsertAll, 'onInsertAll', ['rows' => $rows]))->__invoke()->val;
+        return (new Process($this->_extInsertAll, 'onInsertAll', ['table' => $this, 'rows' => $rows]))->__invoke()->result;
     }
 
     public function update(array $data, array $fdq)
     {
-        return (new Process($this->_extUpdate, 'onUpdate', ['data' => $data, 'fdq' => $fdq]))->__invoke()->val;
+        return (new Process($this->_extUpdate, 'onUpdate', ['table' => $this, 'data' => $data, 'fdq' => $fdq]))->__invoke()->result;
     }
 
     public function delete(array $fdq)
     {
-        return (new Process($this->_extDelete, 'onDelete', ['fdq' => $fdq]))->__invoke()->val;
+        return (new Process($this->_extDelete, 'onDelete', ['table' => $this, 'fdq' => $fdq]))->__invoke()->result;
     }
 
     /* extension */
 
     protected function onFetch(Process $process)
     {
-        $process->val = $this->getDb()->fetch($process->fdq);
+        $process->result = $this->getDb()->fetch($process->fdq);
+        $process();
     }
 
     protected function onFetchAll(Process $process)
     {
-        $process->val = $this->getDb()->fetchAll($process->fdq);
+        $process->result = $this->getDb()->fetchAll($process->fdq);
+        $process();
     }
 
     protected function onInsert(Process $process)
     {
-        $process->val = $this->getDb()->insert($this->_name, $process->row);
+        $process->result = $this->getDb()->insert($this->_name, $process->row);
+        $process();
     }
 
     protected function onInsertAll(Process $process)
     {
-        $process->val = $this->getDb()->insertAll($this->_name, $process->rows);
+        $process->result = $this->getDb()->insertAll($this->_name, $process->rows);
+        $process();
     }
 
     protected function onUpdate(Process $process)
     {
-        $process->val = $this->getDb()->update($this->_name, $process->data, $process->fdq);
+        $process->result = $this->getDb()->update($this->_name, $process->data, $process->fdq);
+        $process();
     }
 
     protected function onDelete(Process $process)
     {
-        $process->val = $this->getDb()->delete($this->_name, $process->fdq);
+        $process->result = $this->getDb()->delete($this->_name, $process->fdq);
+        $process();
     }
 
     /* lazy */

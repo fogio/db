@@ -196,37 +196,37 @@ Eg.
  
 ```php
 use Fogio\Db\Db;
+use Fogio\Db\Table\Table;
 use Fogio\Db\Table\OnExtendInterface;
-use Fogio\Db\Table\TableAwareInterface;
-use Fogio\Db\Table\TableAwareTrait;
+use Fogio\Container\InvokableInterface;
 
-class Post extends Table 
+class Save implements OnExtendInterface, InvokableInterface
 {
-    protected function provideExtensions()
-    {
-        return [
-           new Order(),
-        ];
-    }
-}
-
-class Order implements TableAwareInterface, OnExtendInterface
-{
-    TableAwareTrait;
+    protected $table;
 
     public function onExtend(Table $table)
     {
-        $table(['order' => $this]);
+        $this->table = $table(['save' => $this]);
+        $this->key = $this->table->getKey();
+        if ($this->key === null) {
+            throw new LogicException();
+        }
     }
 
-    public function invoke()
+    public function invoke($row)
     {
-        return $this->getNextFreeOrderNumber();
+        return $this->save($row);
     }
 
-    public function getNextFreeOrderNumber()
+    public function save($row)
     {
-        return $this->table->fetchVal([':select' => '|MAX(post_order)']) + 1;
+        if ($row[$this->key] === null) {
+            return $this->table->insert($row);
+        } else {
+            $fdq = [$this->key => $row[$this->key]];
+            unset($row[$this->key]);
+            return $this->table->update($row, $fdq);
+        }
     }
 
 }
@@ -234,11 +234,11 @@ class Order implements TableAwareInterface, OnExtendInterface
 $db = new Db();
 $db->setPdo(new Pdo('mysql:host=localhost;dbname=test'));
 $db(['post' => Post::class]);
-print_r($db->post->order->getNextFreeOrderNumber());
+print_r($db->post->save());
 
 ```
 
-or by [invoke mechanism](https://github.com/fogio/container#invoke) `print_r($db->post->order());`
+More about [InvokableInterface](https://github.com/fogio/container#invoke)
 
 
 ### Extending CRUD
@@ -260,14 +260,10 @@ Eg.
 ```php
 use Fogio\Db\Table\Table;
 use Fogio\Db\Table\OnFetchAllInterface;
-use Fogio\Db\Table\EventFetchAll;
-use Fogio\Db\Table\TableAwareInterface;
-use Fogio\Db\Table\TableAwareTrait;
+use Fogio\Db\Table\Process;
 
-class DefaultOrder implements OnFetchAllInterface, TableAwareInterface
+class DefaultOrder implements OnFetchAllInterface
 {
-    use TableAwareTrait;
-
     protected $order;
 
     public function setOrder($order)
@@ -275,22 +271,18 @@ class DefaultOrder implements OnFetchAllInterface, TableAwareInterface
         $this->order = $order;
     }
 
-    public function onFetchAllPre(EventFetchAll $event)
+    public function onFetchAll(Process $process)
     {
-        if (isset($event->fdq[':order'])) {
-            return;
+        if (!isset($process->fdq[':order'])) {
+            if ($this->order === null) {
+                $this->order = "`{$process->table->getKey()}` ASC";
+            }
+            $process->fdq[':order'] = $this->order;
         }
 
-        if (!$this->order) {
-            $this->order = "`{$this->table->getKey()}` ASC";
-        }
-
-        $event->fdq[':order'] = $this->order;
+        $process();
     }
 
-    public function onFetchAllPost(EventFetchAll $event)
-    {
-    }
 }
 
 class Post extends Table 
@@ -314,6 +306,45 @@ $db->post->fetchAll();
 
 #### Process params
 
+```php
+OnFetchInterface->onFetch(Process $process) 
+{
+    $process->table; // Fogio\Db\Table\Table
+    $process->fdq; // fetch fdq
+    $process->result; // fetched record, return value
+}
+OnFetchAllInterface->onFetchAll(Process $process) 
+{
+    $process->table; // Fogio\Db\Table\Table
+    $process->fdq; // fetch fdq
+    $process->result; // fetched records, return value
+}
+OnInsertInterface->onInsert(Process $process) 
+{
+    $process->table; // Fogio\Db\Table\Table
+    $process->row; // row to insert
+    $process->result; // PDOStatement, return value
+}
+OnInsertAllInterface->onInsertAll(Process $process) 
+{
+    $process->table; // Fogio\Db\Table\Table
+    $process->rows; // rows to insert
+    $process->result; // PDOStatement, return value
+}
+OnUpdateInterface->onUpdate(Process $process) 
+{
+    $process->table; // Fogio\Db\Table\Table
+    $process->data; // data to set
+    $process->fdq; // condition 
+    $process->result; // PDOStatement, return value
+}
+OnDeleteInterface->onDelete(Process $process) 
+{
+    $process->table; // Fogio\Db\Table\Table
+    $process->fdq; // condition
+    $process->result; // PDOStatement, return value
+}
+```
 
 
 #### Extensions call flow
@@ -321,35 +352,36 @@ $db->post->fetchAll();
 Eg.
 ```php
 use Fogio\Db\Table\OnFetchInterface;
-use Fogio\Db\Table\EventFetch;
 
 class TestDepth implements OnFetchInterface
 {
-
     protected $name;
 
     public function setName($name)
     {
         $this->name = $name;
     }
-    public function onFetchPre(EventFetch $event)
+
+    public function onFetchPre(Process $process)
     {
-        $event->depth++;
-        echo str_repeat(' ', $event->depth)  . $this->name . " - Pre\n";
+        // pre
+        $process->depth++;
+        echo str_repeat(' ', $process->depth)  . $this->name . " - Pre\n";
 
         if ($this->name === 'C') {
-            $event->val = 'Test Return C';
-            $event->stop = true;
+            $process->val = 'Test Return C';
         }
-    }
 
-    public function onFetchPost(EventFetchAll $event)
-    {
-        echo str_repeat(' ', $event->depth)  . $this->name . " - Post\n";
-        $event->depth--;
+        if ($this->name !== 'C') { // continue process?
+            $process();
+        }
+
+        // post
+        echo str_repeat(' ', $process->depth)  . $this->name . " - Post\n";
+        $process->depth--;
 
         if ($this->name === 'B') {
-            $event->val = 'Test Return B';
+            $process->val = 'Test Return B';
         }
     }
 }
