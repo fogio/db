@@ -3,6 +3,7 @@
 namespace Fogio\Db\Table\Extension;
 
 use Fogio\Db\Table\OnInsertAllInterface;
+use Fogio\Util\MiddlewareProcess as Process;
 
 class DisableInsertaAll implements OnInsertAllInterface
 {

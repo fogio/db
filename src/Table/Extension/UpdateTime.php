@@ -3,6 +3,7 @@
 namespace Fogio\Db\Table\Extension;
 
 use Fogio\Db\Table\OnUpdateInterface;
+use Fogio\Util\MiddlewareProcess as Process;
 
 class UpdateTime implements OnUpdateInterface
 {

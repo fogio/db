@@ -6,10 +6,11 @@
     "require": {
         "php": ">=5.4.0",
         "fogio/container": "*",
-        "fogio/paging": "*"
+        "fogio/paging": "*",
+        "fogio/util": "*"
     },
     "minimum-stability": "dev",
     "autoload": {
-        "psr-4": { "Fogio\\Db\\": "src/Fogio/Db/" }
+        "psr-4": { "Fogio\\Db\\": "src/" }
     }
 }

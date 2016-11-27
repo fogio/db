@@ -4,6 +4,7 @@ namespace Fogio\Db\Table;
 
 use Fogio\Db\Db;
 use Fogio\Container\ContainerTrait;
+use Fogio\Util\MiddlewareProcess as Process;
 
 class Table
 {

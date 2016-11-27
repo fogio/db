@@ -9,6 +9,7 @@ use Fogio\Db\Table\Extensions\OnFetchAllInterface;
 use Fogio\Db\Table\Extensions\OnInsertInterface;
 use Fogio\Db\Table\Extensions\OnInsertAllInterface;
 use Fogio\Db\Table\Extensions\OnUpdateInterface;
+use Fogio\Util\MiddlewareProcess as Process;
 
 
 class SerializeFields implements 

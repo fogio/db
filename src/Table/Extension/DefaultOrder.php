@@ -3,7 +3,7 @@
 namespace Fogio\Db\Table\Extension;
 
 use Fogio\Db\Table\OnFetchAllInterface;
-use Fogio\Db\Table\Process;
+use Fogio\Util\MiddlewareProcess as Process;
 
 class DefaultOrder implements OnFetchAllInterface
 {
