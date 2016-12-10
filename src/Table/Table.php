@@ -132,12 +132,12 @@ class Table
 
     public function fetch($fdq)
     {
-        return (new Process($this->_extFetch, 'onFetch', ['table' => $this, 'fdq' => $fdq + $this->getFetcher()]))->__invoke()->result;
+        return (new Process($this->_extFetch, 'onFetch', ['table' => $this, 'query' => $fdq + $this->getFetcher()]))->__invoke()->result;
     }
 
     public function fetchAll($fdq)
     {
-        return (new Process($this->_extFetchAll, 'onFetchAll', ['table' => $this, 'fdq' => $fdq + $this->getFetcher()]))->__invoke()->result;
+        return (new Process($this->_extFetchAll, 'onFetchAll', ['table' => $this, 'query' => $fdq + $this->getFetcher()]))->__invoke()->result;
     }
 
     public function fetchCol($fdq)
@@ -179,25 +179,25 @@ class Table
 
     public function update(array $data, array $fdq)
     {
-        return (new Process($this->_extUpdate, 'onUpdate', ['table' => $this, 'data' => $data, 'fdq' => $fdq]))->__invoke()->result;
+        return (new Process($this->_extUpdate, 'onUpdate', ['table' => $this, 'data' => $data, 'query' => $fdq]))->__invoke()->result;
     }
 
     public function delete(array $fdq)
     {
-        return (new Process($this->_extDelete, 'onDelete', ['table' => $this, 'fdq' => $fdq]))->__invoke()->result;
+        return (new Process($this->_extDelete, 'onDelete', ['table' => $this, 'query' => $fdq]))->__invoke()->result;
     }
 
     /* extension */
 
     protected function onFetch(Process $process)
     {
-        $process->result = $this->getDb()->fetch($process->fdq);
+        $process->result = $this->getDb()->fetch($process->query);
         $process();
     }
 
     protected function onFetchAll(Process $process)
     {
-        $process->result = $this->getDb()->fetchAll($process->fdq);
+        $process->result = $this->getDb()->fetchAll($process->query);
         $process();
     }
 
@@ -215,13 +215,13 @@ class Table
 
     protected function onUpdate(Process $process)
     {
-        $process->result = $this->getDb()->update($this->_name, $process->data, $process->fdq);
+        $process->result = $this->getDb()->update($this->_name, $process->data, $process->query);
         $process();
     }
 
     protected function onDelete(Process $process)
     {
-        $process->result = $this->getDb()->delete($this->_name, $process->fdq);
+        $process->result = $this->getDb()->delete($this->_name, $process->query);
         $process();
     }
 

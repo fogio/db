@@ -16,11 +16,11 @@ class DefaultOrder implements OnFetchAllInterface
 
     public function onFetchAll(Process $process)
     {
-        if (!isset($process->fdq[':order'])) {
+        if (!isset($process->query[':order'])) {
             if ($this->order === null) {
                 $this->order = "`{$process->table->getKey()}` ASC";
             }
-            $process->fdq[':order'] = $this->order;
+            $process->query[':order'] = $this->order;
         }
 
         $process();
