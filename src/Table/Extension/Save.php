@@ -2,12 +2,9 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Db;
 use Fogio\Db\Table\Table;
-use Fogio\Db\Table\OnExtendInterface;
-use Fogio\Container\InvokableInterface;
 
-class Save implements OnExtendInterface, InvokableInterface
+class Save
 {
     protected $table;
 

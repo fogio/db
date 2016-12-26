@@ -2,11 +2,14 @@
 
 namespace \Fogio\Db;
 
-use Fogio\Container\Container;
+use Fogio\Container\ContainerTrait;
+use Fogio\Middleware\MiddlewareTrait;
 
-class Db extends Container
+class Db
 {
-    
+    use ContainerTrait;
+    use MiddlewareTrait { setActivities as protected; process as protected; }
+
     /* config */
     
     public function setPdo($pdo)
@@ -39,7 +42,17 @@ class Db extends Container
     {
         return $this->_paging;
     }
-    
+
+    public function setExtensions(array $extensions)
+    {
+        return $this->setActivities(array_merge($extensions, [$this]));
+    }
+
+    public function getExtensions()
+    {
+        return $this->getActivities();
+    }
+
     /* query base */
 
     /**
@@ -73,59 +86,70 @@ class Db extends Container
         return $this->_pdo->rollBack();
     }
 
-    /* fetch */
-    
-    public function count($fdq, $expr = '*')
-    {
-        return $this->fetchVal([':select' => "|count($expr)"] + $fdq);
-    }
+    /* read */
     
     public function fetch($fdq)
     {
-        return $this->query($fdq)->fetch(PDO::FETCH_ASSOC);
+        return $this->process('onFetch', ['db' => $this, 'query' => $fdq])->result;
     }
 
     public function fetchAll($fdq)
     {
-        $calc = isset($fdq[':paging']) && $fdq[':paging']->getCalcFound() === true;
-        
-        if ($calc) {
-            $fdq[':prefix'] = (isset($fdq[':prefix']) ? $fdq[':prefix'] . ' ' : '') . 'SQL_CALC_FOUND_ROWS';
-        }
-        
-        $data = $this->query($fdq)->fetchAll(PDO::FETCH_ASSOC);
-        
-        if ($calc) {
-            $fdq[':paging']->setAll($this->fetchVal('SELECT FOUND_ROWS()'));
-        }
-                
-        return $data;
+        return $this->process('onFetchAll', ['db' => $this, 'query' => $fdq])->result;
     }
 
     public function fetchCol($fdq, $colName = 0)
     {
         $col = [];
-        foreach ($this->query($fdq)->fetchall() as $row) {
-            $col[] = $row[$colName];
+        $int = is_int($colName);
+        foreach ($this->fetchall($fdq) as $row) {
+            $col[] = $int ? array_values($row)[$colName] : $row[$colName];
         }
         return $col;
     }
 
     public function fetchVal($fdq, $colName = 0)
     {
-        $row = $this->query($fdq)->fetch();
+        $row = $this->fetch($fdq);
 
-        return array_key_exists($colName, $row) ? $row[$colName] : null;
+        if (!$row) {
+            return null;
+        }
+
+        return  is_int($colName) ? array_values($row)[$colName] : $row[$colName];
     }
 
-    public function fetchKeyPair($fdq)
+    public function fetchKeyPair($fdq, $keyColName = 0, $valColName = 1)
     {
-        return $this->query($fdq)->fetchAll(\PDO::FETCH_KEY_PAIR);
+        $return = [];
+        $intKey = is_int($keyColName);
+        $intVal = is_int($valColName);
+        $int    = $intKey || $intVal;
+
+        foreach ($this->fetchAll($fdq) as $row) {
+            if ($int) {
+                $intRow = array_values($row);
+            }
+            $return[$intKey ? $intRow[$keyColName] : $row[$keyColName]] = $intVal ? $intRow[$valColName] : $row[$valColName];
+        }
+        return $return;
     }
 
-    public function fetchKeyed($fdq)
+    public function fetchKeyed($fdq, $colName = 0)
     {
-        return $this->query($fdq)->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_UNIQUE | \PDO::FETCH_ASSOC);
+        $return = [];
+        $int = is_int($colName);
+
+        foreach ($this->fetchAll($fdq) as $row) {
+            $return[$int ? array_values($row)[$colName] : $row[$colName]] = $row;
+        }
+
+        return $return;
+    }
+
+    public function count($fdq, $expr = '*')
+    {
+        return $this->fetchVal([':select' => "|count($expr)"] + $fdq);
     }
 
     /* write */
@@ -138,53 +162,22 @@ class Db extends Container
      */
     public function insert($table, array $row)
     {
-        $set = [];
-
-        foreach ($row as $k => $v) {
-            if (is_int($k)) {
-                $set[] = $v;
-            } else {
-                $set[$k] = "`$k` = '{$this->escape($v)}'";
-            }
-        }
-
-        return $this->query("INSERT INTO `{$table}` SET ".implode(', ', $set));
+        return $this->process('onInsert', ['db' => $this, 'table' => $table, 'row' => $row])->result;
     }
 
     public function insertAll($table, array $rows)
     {
-        $fields = array_keys($rows[0]);
-        $values = [];
-
-        foreach ($rows as $row) {
-            $value = [];
-            foreach ($fields as $field) {
-                $value[$field] = "'{$this->escape($row[$field])}'";
-            }
-            $values[] = '('.implode(', ', $value).')';
-        }
-
-        return $this->query("INSERT INTO `{$table}` (`".implode('`, `', $fields).'`) VALUES '.implode(', ', $values));
+        return $this->process('onInsertAll', ['db' => $this, 'table' => $table, 'rows' => $rows])->result;
     }
 
     public function update($table, array $data, array $fdq)
     {
-        $set = array();
-
-        foreach ($data as $k => $v) {
-            if (is_int($k)) {
-                $set[] = $v;
-            } else {
-                $set[$k] = "`$k` = '{$this->escape($v)}'";
-            }
-        }
-
-        return $this->query("UPDATE `{$table}` SET ".implode(', ', $set).' WHERE '.$this->sqlCondition($fdq));
+        return $this->process('onUpdate', ['db' => $this, 'table' => $table, 'data' => $data, 'query' => $fdq])->result;
     }
 
     public function delete($table, array $fdq)
     {
-        return $this->query([':prefix' => 'DELETE', ':from' => $table] + $fdq);
+        return $this->process('onDelete', ['db' => $this, 'table' => $table, 'query' => $fdq])->result;
     }
     
     /* helpers */
@@ -238,84 +231,7 @@ class Db extends Container
         if (is_string($fdq)) {
             return $fdq;
         }
-        
-        // select, prefix
-        $select = null;
-        if (isset($fdq[':select'])) {
-            if (!is_array($fdq[':select'])) {
-                $select = $fdq[':select'];
-            } else {
-                $cols = [];
-                foreach ($fdq[':select'] as $k => $v) {
-                    $col = $v[0] === '|' ? substr($v, 1) : "`$v`";
-                    if (is_int($k)) {
-                        $col .= ' '.($k[0] === '|' ? substr($k, 1) : "'{$this->escape($k)}'");
-                    }
-                    $cols[] = $col;
-                }
-                $select = implode(', ', $cols);
-            }
-            $select = 'SELECT '
-                    .(array_key_exists(':prefix', $fdq) ? ' '.$fdq[':prefix'] : '')
-                    .$select;
-        }
-
-        // from, alias
-        $from = null;
-        if (array_key_exists(':from', $fdq)) {
-            $from = ' FROM ';
-            if (is_array()) {
-                $table = reset($fdq[':from']);
-                $alias = key($fdq[':from']);
-                $from .= "`$table` as '{$this->escape($alias)}'";
-            } elseif ($fdq[':from'][0] === '*') {
-                $from .= substr($fdq[':from'], 1);
-            } else {
-                $from .= "`{$fdq[':from']}`";
-            }
-        }
-
-        // join
-        $join = array_key_exists(':join', $fdq) ? ' '.implode(' ', $fdq[':join']) : null;
-
-        // group
-        $group = array_key_exists(':group', $fdq) ? ' GROUP BY '.$fdq[':group'] : null;
-
-        // having
-        $having = array_key_exists(':having', $fdq) ? ' HAVING '.$this->sqlCondition($fdq[':having']) : null;
-
-        // group
-        $order = array_key_exists(':order', $fdq) ? ' ORDER BY '.$fdq[':order'] : null;
-
-        // limit, offset
-        $limit = null;
-        $offset = null;
-        if (array_key_exists(':paging', $fdq)) {
-            $limit = ' LIMIT '.$fdq[':paging']->getLimit();
-            $offset = ' OFFSET '.$fdq[':paging']->getOffset();
-        } else {
-            if (array_key_exists(':limit', $fdq)) {
-                $limit = ' LIMIT '.$fdq[':limit'];
-            }
-            if (array_key_exists(':offset', $fdq)) {
-                $offset = ' OFFSET '.$fdq[':offset'];
-            }
-        }
-
-        unset($fdq[':select'], $fdq[':prefix'],
-              $fdq[':from'], $fdq[':join'],
-              $fdq[':group'], $fdq[':having'], $fdq[':order'],
-              $fdq[':paging'], $fdq[':limit'], $fdq[':offset']);
-
-        // everything else is where
-        $where = $this->sqlCondition($fdq);
-        if ($where) {
-            $where = ' WHERE '.$where;
-        } else {
-            $where = null;
-        }
-
-        return $select.$from.$join.$where.$group.$having.$order.$limit.$offset;
+        return $this->process('onSql', ['db' => $this, 'query' => $fdq])->result;
     }
 
     public function sqlCondition($condition)
@@ -389,6 +305,220 @@ class Db extends Container
         return implode($logical, $sql);
     }
 
+    /* extension */
+
+    public function onFetch(Process $process)
+    {
+        $process->result = $process->db->query($process->query)->fetch(PDO::FETCH_ASSOC);
+        $process();
+    }
+
+    public function onFetchAll(Process $process)
+    {
+        $calc = isset($process->query[':paging']) && $process->query[':paging']->getCalcFound() === true;
+
+        if ($calc) {
+            $process->query[':prefix'] = (isset($process->query[':prefix']) ? $process->query[':prefix'] . ' ' : '') . 'SQL_CALC_FOUND_ROWS';
+        }
+
+        $process->result = $process->db->query($process->query)->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($calc) {
+            $process->query[':paging']->setAll($this->fetchVal('SELECT FOUND_ROWS()'));
+        }
+
+        $process();
+    }
+
+    public function onInsert(Process $process)
+    {
+        $process->query[':insert'] = $process->table;
+        $process->query[':set'] = $process->rows;
+        $process->result = $process->db->query($process->query);
+        $process();
+    }
+
+    public function onInsertAll(Process $process)
+    {
+        $process->query[':insert'] = $process->table;
+        $process->query[':insert_rows'] = $process->rows;
+        $process->result = $process->db->query($process->query);
+        $process();
+    }
+
+    public function onUpdate(Process $process)
+    {
+        $process->query[':update'] = $process->table;
+        $process->query[':set'] = $process->data;
+        $process->result = $process->db->query($process->query);
+        $process();
+
+    }
+
+    public function onDelete(Process $process)
+    {
+        $process->query[':delete'] = true;
+        $process->query[':from'] = $process->table;
+        $process->result = $process->db->query($process->query);
+        $process();
+    }
+
+    public function onSql(Process $process)
+    {
+        $fdq = $process->query;
+
+        // select, prefix
+        $select = null;
+        if (array_key_exists(':select', $fdq)) {
+            if (!is_array($fdq[':select'])) {
+                $select = $fdq[':select'];
+            } else {
+                $subjects = [];
+                foreach ($fdq[':select'] as $k => $v) {
+                    $subject = $v[0] === '|' ? substr($v, 1) : "`$v`";
+                    if (!is_int($k)) {
+                        $subject .= ' as '.($k[0] === '|' ? substr($k, 1) : "'{$process->db->escape($k)}'");
+                    }
+                    $subjects[] = $subject;
+                }
+                $select = implode(', ', $subjects);
+            }
+            $select = 'SELECT '
+                    .(array_key_exists(':prefix', $fdq) ? ' '.$fdq[':prefix'] : '')
+                    .$select;
+        }
+
+        // from, alias
+        $from = null;
+        if (array_key_exists(':from', $fdq)) {
+            $from = ' FROM ';
+            if (is_array()) {
+                $table = reset($fdq[':from']);
+                $alias = key($fdq[':from']);
+                $from .= "`$table` as '{$process->db->escape($alias)}'";
+            } elseif ($fdq[':from'][0] === '*') {
+                $from .= substr($fdq[':from'], 1);
+            } else {
+                $from .= "`{$fdq[':from']}`";
+            }
+        }
+
+        // join
+        $join = array_key_exists(':join', $fdq) ? ' '.implode(' ', $fdq[':join']) : null;
+
+        // group
+        $group = array_key_exists(':group', $fdq) ? ' GROUP BY '.$fdq[':group'] : null;
+
+        // having
+        $having = array_key_exists(':having', $fdq) ? ' HAVING '.$process->db->sqlCondition($fdq[':having']) : null;
+
+        // group
+        $order = array_key_exists(':order', $fdq) ? ' ORDER BY '.$fdq[':order'] : null;
+
+        // limit, offset
+        $limit = null;
+        $offset = null;
+        if (array_key_exists(':paging', $fdq)) {
+            $limit = ' LIMIT '.$fdq[':paging']->getLimit();
+            $offset = ' OFFSET '.$fdq[':paging']->getOffset();
+        } else {
+            if (array_key_exists(':limit', $fdq)) {
+                $limit = ' LIMIT '.$fdq[':limit'];
+            }
+            if (array_key_exists(':offset', $fdq)) {
+                $offset = ' OFFSET '.$fdq[':offset'];
+            }
+        }
+
+        // insert
+        $insert = null;
+        if (array_key_exists(':insert', $fdq)) {
+            $insert = 'INSERT INTO ' . ($fdq[':insert'][0] === '|' ? substr($fdq[':insert'], 1) : "`{$fdq[':insert']}`");
+        }
+
+        // update
+        $update = null;
+        if (array_key_exists(':update', $fdq)) {
+            $update = 'UPDATE ' . ($fdq[':update'][0] === '|' ? substr($fdq[':update'], 1) : "`{$fdq[':update']}`");
+        }
+
+        // delete
+        $delete = null;
+        if (array_key_exists(':delete', $fdq)) {
+            if (is_string($fdq[':delete']) && $from === null) { // no from, only delete => DELETE FROM `table`
+                $delete = 'DELETE';
+                $from = " FROM `{$fdq[':delete']}`";
+            }
+            elseif ($fdq[':delete'] === true) {
+                $delete = 'DELETE';
+            }
+            elseif (is_string($fdq[':delete'])) {
+                $delete = 'DELETE ' . $fdq[':delete'];
+            }
+            elseif (is_array($fdq[':delete'])) {
+                $subjects = [];
+                foreach ($fdq[':delete'] as $k => $v) {
+                    $subject = $v[0] === '|' ? substr($v, 1) : "`$v`";
+                    if (!is_int($k)) {
+                        $subject .= ' as '.($k[0] === '|' ? substr($k, 1) : "'{$process->db->escape($k)}'");
+                    }
+                    $subjects[] = $subject;
+                }
+                $delete = 'DELETE '.implode(', ', $subjects);
+            }
+        }
+
+        // set
+        $set = null;
+        if (array_key_exists(':set', $fdq)) {
+            $set = array();
+            foreach ($fdq[':set'] as $k => $v) {
+                if (is_int($k)) {
+                    $set[] = $v;
+                } else {
+                    $set[$k] = "`$k` = " . ($v[0] === '|' ? substr($v, 1) : "'{$process->db->escape($v)}'");
+                }
+            }
+            $set = " SET ".implode(', ', $set);
+        }
+
+        // insert_rows
+        $insert_rows = null;
+        if (array_key_exists(':insert_rows', $fdq)) {
+            $insert_fields = array_keys($fdq[':insert_rows'][0]);
+            $insert_values = [];
+            foreach ($fdq[':insert_rows'] as $row) {
+                $row = [];
+                foreach ($insert_fields as $field) {
+                    $row[$field] = $row[$field][0] === '|' ? substr($row[$field], 1) : "'{$process->db->escape($row[$field])}'";
+                }
+                $insert_values[] = '('.implode(', ', $row).')';
+            }
+            $insert_rows = " (`".implode('`, `', $insert_fields).'`) VALUES '.implode(', ', $insert_values);
+        }
+
+
+        unset(
+            $fdq[':insert'], $fdq[':update'], $fdq[':delete'], $fdq[':select'],
+            $fdq[':insert_rows'], $fdq[':set'],
+            $fdq[':prefix'],
+            $fdq[':from'], $fdq[':join'],
+            $fdq[':group'], $fdq[':having'], $fdq[':order'],
+            $fdq[':paging'], $fdq[':limit'], $fdq[':offset']
+        );
+
+        // everything else is where
+        $where = $process->db->sqlCondition($fdq);
+        if ($where) {
+            $where = ' WHERE '.$where;
+        } else {
+            $where = null;
+        }
+
+        $process->result = $insert.$update.$delete.$select.$insert_rows.$set.$from.$join.$where.$group.$having.$order.$limit.$offset;
+        $process();
+    }
+
     /* private api */
 
     protected function __pdo()
@@ -401,6 +531,13 @@ class Db extends Container
         return new Paging();
     }
 
+    protected function __init()
+    {
+        foreach ($this->getActivitiesWithMethod('onExtend') as $extension) {
+            $extension->onExtend($this);
+        }
+    }
+
     protected function __factory($service, $name)
     {
         if ($service !== null) {
@@ -409,33 +546,5 @@ class Db extends Container
 
         return $this->$name = (new Table())->setName($name);
     }
-
-    protected function __schema()
-    {
-        $db = $this;
-        return $this->_schema = (new Container())->__invoke([
-            '__tables' => function ($schema) use ($db) {
-                return $schema->_tables = $db->fetchCol('SHOW TABLES', 'TABLE_NAME');
-            },
-            '__factory' => function ($service, $name,  $schema) use ($db) { 
-                if (!in_array($name, $this->_tables)) {
-                    throw new LogicException("Table `$name` doesn't exist");
-                }
-                $schema->$name = (object)[
-                    'raw' => $db->fetchAll("SHOW COLUMNS FROM `" . $db->escape($name) ."`"),
-                    'fields' => [],
-                    'key' => null,
-                ];
-                foreach ($schema->$name->raw as $col) {
-                    $schema->$name->fields[] = $col['Field'];
-                    if ($col['Key'] === 'PRI') {
-                        $schema->$name->key = $col['Field'];
-                    }
-                }
-
-            },
-        ]);
-    }
-
     
 }

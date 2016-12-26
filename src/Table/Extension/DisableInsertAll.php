@@ -2,10 +2,9 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Table\OnInsertAllInterface;
-use Fogio\Util\MiddlewareProcess as Process;
+use Fogio\Middleware\Process;
 
-class DisableInsertaAll implements OnInsertAllInterface
+class DisableInsertaAll
 {
     public function onInsertAll(Process $process)
     {

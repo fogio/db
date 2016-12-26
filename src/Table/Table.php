@@ -4,12 +4,13 @@ namespace Fogio\Db\Table;
 
 use Fogio\Db\Db;
 use Fogio\Container\ContainerTrait;
-use Fogio\Util\MiddlewareProcess as Process;
+use Fogio\Middleware\Process;
+use Fogio\Middleware\MiddlewareTrait;
 
 class Table
 {
-
     use ContainerTrait;
+    use MiddlewareTrait { setActivities as protected; process as protected; }
 
     /**
      * @var Db 
@@ -64,36 +65,14 @@ class Table
         return $this->_fields;
     }
     
-    public function setExtensions($extensions)
+    public function setExtensions(array $extensions)
     {
-        // clean caches
-        unset(
-            $this->_extFetch, $this->_extFetchAll,
-            $this->_extInsert, $this->_extInsertAll,
-            $this->_extUpdate, $this->_extDelete,
-            $this->_init // for ExtendTableInterface
-        );
-
-        $this->_ext = $extensions;
-        
-        return $this;
+        return $this->setActivities(array_merge($extensions, [$this]));
     }
 
     public function getExtensions()
     {
-        return $this->_ext;
-    }
-
-    public function setLinks($links)
-    {
-        $this->_links = $links;
-    
-        return $this;
-    }
-    
-    public function getLinks()
-    {
-        return $this->_links;
+        return $this->getActivities();
     }
 
     /* provide */
@@ -118,73 +97,94 @@ class Table
         return [];
     }
     
-    protected function provideLinks() 
-    {
-        return [];
-    }
-
     /* read */
     
-    public function getFetcher()
-    {
-        return [':select' => $this->_fields, ':from' => $this->_name];
-    }
-
     public function fetch($fdq)
     {
-        return (new Process($this->_extFetch, 'onFetch', ['table' => $this, 'query' => $fdq + $this->getFetcher()]))->__invoke()->result;
+        return $this->process('onFetch', [
+            'table' => $this,
+            'query' => $fdq + [':select' => $this->_fields, ':from' => $this->_name]
+        ])->result;
     }
 
     public function fetchAll($fdq)
     {
-        return (new Process($this->_extFetchAll, 'onFetchAll', ['table' => $this, 'query' => $fdq + $this->getFetcher()]))->__invoke()->result;
+        return $this->process('onFetchAll', [
+            'table' => $this,
+            'query' => $fdq + [':select' => $this->_fields, ':from' => $this->_name]
+        ])->result;
     }
 
-    public function fetchCol($fdq)
+    public function fetchCol($fdq, $col = 0)
     {
-        return $this->_db->fetchCol($fdq + $this->getFetcher());
+        $return = [];
+        foreach ($this->fetchAll($fdq) as $row) {
+            $return[] = $row[$col];
+        }
+
+        return $return;
     }
 
-    public function fetchVal($fdq)
+    public function fetchVal($fdq, $col = 0)
     {
-        return $this->_db->fetchVal($fdq + $this->getFetcher());
+        $row = $this->fetch($fdq);
+
+        return $row ? $row[$col] : null;
     }
 
-    public function fetchKeyPair($fdq)
+    public function fetchKeyPair($fdq, $keyColName = 0, $valColName = 1)
     {
-        return $this->_db->fetchKeyPair($fdq + $this->getFetcher());
+        $return = [];
+        $intKey = is_int($keyColName);
+        $intVal = is_int($valColName);
+        $int    = $intKey || $intVal;
+
+        foreach ($this->fetchAll($fdq) as $row) {
+            if ($int) {
+                $intRow = array_values($row);
+            }
+            $return[$intKey ? $intRow[$keyColName] : $row[$keyColName]] = $intVal ? $intRow[$valColName] : $row[$valColName];
+        }
+        return $return;
     }
 
-    public function fetchKeyed($fdq)
+    public function fetchKeyed($fdq, $colName= 0)
     {
-        return $this->_db->fetchKeyed($fdq + $this->getFetcher());
+        $return = [];
+        $int = is_int($colName);
+
+        foreach ($this->fetchAll($fdq) as $row) {
+            $return[$int ? array_values($row)[$colName] : $row[$colName]] = $row;
+        }
+
+        return $return;
     }
 
-    public function fetchCount($params = null, $expr = '*')
+    public function count($fdq = null, $expr = '*')
     {
-        return $this->_db->fetchCount($fdq + [':from' => $this->getName()], $expr);
+        return $this->fetchVal([':select' => "|count($expr)"] + $fdq);
     }
 
     /* write */
 
     public function insert(array $row)
     {
-        return (new Process($this->_extInsert, 'onInsert', ['table' => $this, 'row' => $row]))->__invoke()->result;
+        return $this->process('onInsert', ['table' => $this, 'row' => $row])->result;
     }
 
     public function insertAll(array $rows)
     {
-        return (new Process($this->_extInsertAll, 'onInsertAll', ['table' => $this, 'rows' => $rows]))->__invoke()->result;
+        return $this->process('onInsertAll', ['table' => $this, 'rows' => $rows])->result;
     }
 
     public function update(array $data, array $fdq)
     {
-        return (new Process($this->_extUpdate, 'onUpdate', ['table' => $this, 'data' => $data, 'query' => $fdq]))->__invoke()->result;
+        return $this->process('onUpdate', ['table' => $this, 'data' => $data, 'query' => $fdq])->result;
     }
 
     public function delete(array $fdq)
     {
-        return (new Process($this->_extDelete, 'onDelete', ['table' => $this, 'query' => $fdq]))->__invoke()->result;
+        return $this->process('onDelete', ['table' => $this, 'query' => $fdq])->result;
     }
 
     /* extension */
@@ -242,65 +242,10 @@ class Table
         return $this->setFields($this->provideFields())->getFields();
     }
 
-    protected function __links()
-    {
-        return $this->setLinks($this->provideLinks())->getLinks();
-    }
-
-    protected function __ext()
-    {
-        return $this->setExtensions($this->provideExtensions())->getExtensions();
-    }
-
-    protected function __extFetch()
-    {
-        return $this->_extIndex('Fetch', OnFetchInterface::class);
-    }
-
-    protected function __extFetchAll()
-    {
-        return $this->_extIndex('FetchAll', OnFetchAllInterface::class);
-    }
-
-    protected function __extInsert()
-    {
-        return $this->_extIndex('Insert', OnInsertInterface::class);
-    }
-
-    protected function __extInsertAll()
-    {
-        return $this->_extIndex('InsertAll', OnInsertAllInterface::class);
-    }
-
-    protected function __extUpdate()
-    {
-        return $this->_extIndex('Update', OnUpdateInterface::class);
-    }
-
-    protected function __extDelete()
-    {
-        return $this->_extIndex('Delete', OnDeleteInterface::class);
-    }
-
-    protected function _extIndex($operation, $interface)
-    {
-        $index = "_ext$operation"; 
-        $this->$index = [];
-        foreach ($this->_extension as $extension) {
-            if ($extension instanceof $interface) {
-                $this->$index[] = $extension;
-            }
-        }
-        $this->$index[] = $this;
-        return $this->$index;
-    }
-
     protected function __init()
     {
-        foreach ($this->_ext as $extension) {
-            if ($extension instanceof OnExtendInterface) {
-                $extension->onExtend($this);
-            }
+        foreach ($this->getActivitiesWithMethod('onExtend') as $extension) {
+            $extension->onExtend($this);
         }
     }
 

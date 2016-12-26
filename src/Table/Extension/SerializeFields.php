@@ -2,20 +2,9 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Db;
-use Fogio\Db\Table\Table;
-use Fogio\Db\Table\Extensions\OnFetchInterface;
-use Fogio\Db\Table\Extensions\OnFetchAllInterface;
-use Fogio\Db\Table\Extensions\OnInsertInterface;
-use Fogio\Db\Table\Extensions\OnInsertAllInterface;
-use Fogio\Db\Table\Extensions\OnUpdateInterface;
-use Fogio\Util\MiddlewareProcess as Process;
+use Fogio\Middleware\Process;
 
-
-class SerializeFields implements 
-    OnFetchInterface, OnFetchAllInterface, 
-    OnInsertInterface, OnInsertAllInterface,
-    OnUpdateInterface
+class SerializeFields
 {
     protected $fields;
 

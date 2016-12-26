@@ -2,12 +2,9 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Table\Table;
-use Fogio\Db\Table\OnInsertInterface;
-use Fogio\Db\Table\OnInsertAllInterface;
-use Fogio\Util\MiddlewareProcess as Process;
+use Fogio\Middleware\Process;
 
-class InsertTime implements OnInsertInterface, OnInsertAllInterface
+class InsertTime
 {
     protected $field;
 

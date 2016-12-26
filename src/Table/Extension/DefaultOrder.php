@@ -2,10 +2,9 @@
 
 namespace Fogio\Db\Table\Extension;
 
-use Fogio\Db\Table\OnFetchAllInterface;
-use Fogio\Util\MiddlewareProcess as Process;
+use Fogio\Middleware\Process;
 
-class DefaultOrder implements OnFetchAllInterface
+class DefaultOrder
 {
     protected $order;
 
