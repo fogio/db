@@ -10,7 +10,9 @@ use Fogio\Middleware\MiddlewareTrait;
 class Table
 {
     use ContainerTrait;
-    use MiddlewareTrait { setActivities as protected; process as protected; }
+    use MiddlewareTrait;
+
+    protected $_activitySelf = false;
 
     /**
      * @var Db 
@@ -65,16 +67,6 @@ class Table
         return $this->_fields;
     }
     
-    public function setExtensions(array $extensions)
-    {
-        return $this->setActivities(array_merge($extensions, [$this]));
-    }
-
-    public function getExtensions()
-    {
-        return $this->getActivities();
-    }
-
     /* provide */
 
     protected function provideName() 
@@ -92,11 +84,6 @@ class Table
         return $this->_db->_schema->{$this->_name}->fields;
     }
 
-    protected function provideExtensions()
-    {
-        return [];
-    }
-    
     /* read */
     
     public function fetch($fdq)
@@ -187,7 +174,7 @@ class Table
         return $this->process('onDelete', ['table' => $this, 'query' => $fdq])->result;
     }
 
-    /* extension */
+    /* activity */
 
     protected function onFetch(Process $process)
     {
@@ -244,8 +231,8 @@ class Table
 
     protected function __init()
     {
-        foreach ($this->getActivitiesWithMethod('onExtend') as $extension) {
-            $extension->onExtend($this);
+        foreach ($this->getActivitiesWithMethod('onExtend') as $activity) {
+            $activity->onExtend($this);
         }
     }
 

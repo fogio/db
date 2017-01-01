@@ -8,7 +8,9 @@ use Fogio\Middleware\MiddlewareTrait;
 class Db
 {
     use ContainerTrait;
-    use MiddlewareTrait { setActivities as protected; process as protected; }
+    use MiddlewareTrait;
+
+    protected $_activitySelf = true;
 
     /* config */
     
@@ -43,22 +45,12 @@ class Db
         return $this->_paging;
     }
 
-    public function setExtensions(array $extensions)
-    {
-        return $this->setActivities(array_merge($extensions, [$this]));
-    }
-
-    public function getExtensions()
-    {
-        return $this->getActivities();
-    }
-
     /* query base */
 
     /**
      * @return PDOStatement
      */
-    public function query($fdq)
+    public function query(array $fdq)
     {
         return $this->_pdo->query($this->sql($fdq));
     }
@@ -66,7 +58,7 @@ class Db
     /**
      * @return PDOStatement
      */
-    public function prepare($fdq)
+    public function prepare(array $fdq)
     {
         return $this->_pdo->prepare($this->sql($fdq));
     }
@@ -88,17 +80,17 @@ class Db
 
     /* read */
     
-    public function fetch($fdq)
+    public function fetch(array $fdq)
     {
         return $this->process('onFetch', ['db' => $this, 'query' => $fdq])->result;
     }
 
-    public function fetchAll($fdq)
+    public function fetchAll(array $fdq)
     {
         return $this->process('onFetchAll', ['db' => $this, 'query' => $fdq])->result;
     }
 
-    public function fetchCol($fdq, $colName = 0)
+    public function fetchCol(array $fdq, $colName = 0)
     {
         $col = [];
         $int = is_int($colName);
@@ -108,7 +100,7 @@ class Db
         return $col;
     }
 
-    public function fetchVal($fdq, $colName = 0)
+    public function fetchVal(array $fdq, $colName = 0)
     {
         $row = $this->fetch($fdq);
 
@@ -119,7 +111,7 @@ class Db
         return  is_int($colName) ? array_values($row)[$colName] : $row[$colName];
     }
 
-    public function fetchKeyPair($fdq, $keyColName = 0, $valColName = 1)
+    public function fetchKeyPair(array $fdq, $keyColName = 0, $valColName = 1)
     {
         $return = [];
         $intKey = is_int($keyColName);
@@ -135,7 +127,7 @@ class Db
         return $return;
     }
 
-    public function fetchKeyed($fdq, $colName = 0)
+    public function fetchKeyed(array $fdq, $colName = 0)
     {
         $return = [];
         $int = is_int($colName);
@@ -147,7 +139,7 @@ class Db
         return $return;
     }
 
-    public function count($fdq, $expr = '*')
+    public function count(array $fdq, $expr = '*')
     {
         return $this->fetchVal([':select' => "|count($expr)"] + $fdq);
     }
@@ -226,11 +218,8 @@ class Db
      *
      * @return string Sql
      */
-    public function sql($fdq)
+    public function sql(array $fdq)
     {
-        if (is_string($fdq)) {
-            return $fdq;
-        }
         return $this->process('onSql', ['db' => $this, 'query' => $fdq])->result;
     }
 
@@ -305,7 +294,7 @@ class Db
         return implode($logical, $sql);
     }
 
-    /* extension */
+    /* activities */
 
     public function onFetch(Process $process)
     {
@@ -458,7 +447,7 @@ class Db
             elseif (is_array($fdq[':delete'])) {
                 $subjects = [];
                 foreach ($fdq[':delete'] as $k => $v) {
-                    $subject = $v[0] === '|' ? substr($v, 1) : "`$v`";
+                    $subject = $v[0]  === '|' ? substr($v, 1) : "`$v`";
                     if (!is_int($k)) {
                         $subject .= ' as '.($k[0] === '|' ? substr($k, 1) : "'{$process->db->escape($k)}'");
                     }
@@ -533,8 +522,8 @@ class Db
 
     protected function __init()
     {
-        foreach ($this->getActivitiesWithMethod('onExtend') as $extension) {
-            $extension->onExtend($this);
+        foreach ($this->getActivitiesWithMethod('onExtend') as $activity) {
+            $activity->onExtend($this);
         }
     }
 

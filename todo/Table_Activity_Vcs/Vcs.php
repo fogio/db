@@ -1,26 +1,14 @@
-<?php
+<?php 
 
-/*
-namespace Fogio\Db\Table\Extension;
+
+namespace Fogio\Db\Table\Activity;
 
 use Fogio\Container\ContainerTrait;
 use Fogio\Db\Db;
 use Fogio\Db\Table\Table;
-use Fogio\Db\Table\OnInsertInterface;
-use Fogio\Db\Table\OnInsertAllInterface;
-use Fogio\Db\Table\OnUpdateInterface;
-use Fogio\Db\Table\OnDeleteInterface;
-use Fogio\Db\Table\Event;
-use Fogio\Db\Table\EventInsert;
-use Fogio\Db\Table\EventInsertAll;
-use Fogio\Db\Table\EventUpdate;
-use Fogio\Db\Table\EventDelete;
 
 
-class Vcs implements 
-    OnExtendInterface, 
-    OnInsertInterface, OnInsertAllInterface,
-    OnUpdateInterface, OnDeleteInterface 
+class Vcs
 {
     use ContainerTrait;
 
@@ -34,7 +22,7 @@ class Vcs implements
     protected $_onDeletePre  = false;
     protected $_onDeletePost = false;
 
-    /* setup * /
+    /* setup */
 
     public function setDb(Db $db)
     {
@@ -102,11 +90,11 @@ class Vcs implements
         $this->setStrategy(false, false, false, true, false);
     }
 
-    /* extension * /
+    /* extension */
 
     public function onExtend(Table $table)
     {
-        $table(['archive' => $this]);
+        $table(['vcs' => $this]);
     }
 
     public function onInsertPre(EventInsert $event)
@@ -155,7 +143,7 @@ class Vcs implements
     }
 
 
-    /* api * /
+    /* api */
 
     public function fetch(array $fdq)
     {
@@ -178,7 +166,7 @@ class Vcs implements
          return $this->_db->delete($this->_table, $fdq);
     }
 
-    /* helpers * /
+    /* helpers */
 
     protected function prepare($event)
     {
@@ -227,7 +215,7 @@ class Vcs implements
         $this->_db->insert($this->_table, $event->vcs->snapshot);
     }
 
-    /* defaults * /
+    /* defaults */
 
     protected function __db()
     {
@@ -240,5 +228,3 @@ class Vcs implements
     }
 
 }
-
-*/

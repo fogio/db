@@ -1,11 +1,10 @@
 <?php
 
-namespace Fogio\Db\Table\Extension;
+namespace Fogio\Db\Table\Activity;
 
-use Fogio\Db\Table\OnUpdateInterface;
-use Fogio\Util\MiddlewareProcess as Process;
+use Fogio\Middleware\Process;
 
-class UpdateTime implements OnUpdateInterface
+class UpdateTime
 {
     protected $field;
 

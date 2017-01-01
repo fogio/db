@@ -1,6 +1,6 @@
 <?php
 
-namespace Fogio\Db\Table\Extension;
+namespace Fogio\Db\Table\Activity;
 
 use Fogio\Db\Table\Table;
 
